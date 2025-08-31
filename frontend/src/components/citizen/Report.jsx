@@ -73,62 +73,110 @@ const Report = () => {
         reader.onerror = (error) => reject(error);
       });
       const base64 = await toBase64(file);
-      // Try multiple possible Gradio REST endpoints (order of likelihood)
-      const HF_BASE = 'https://adityanaulakha-cleansight.hf.space';
-      const candidateEndpoints = ['/run/predict_image', '/predict_image', '/api/predict_image'];
+      const HF_BASE = (import.meta.env.VITE_HF_SPACE_BASE || 'https://adityanaulakha-cleansight.hf.space').replace(/\/$/, '');
+
+      // 1. Introspect available API names from config endpoints
+      const configEndpoints = ['/config', '/api/config', '/info', '/api/info'];
+      let configJson = null;
+      for (const c of configEndpoints) {
+        try {
+          const r = await fetch(`${HF_BASE}${c}`);
+            if (r.ok) {
+              configJson = await r.json();
+              console.log('[HF] Retrieved config from', c, configJson);
+              break;
+            } else {
+              console.warn('[HF] Config endpoint failed', c, r.status);
+            }
+        } catch (e) {
+          console.warn('[HF] Config fetch error', c, e);
+        }
+      }
+
+      // Derive candidate api_names from dependencies (Gradio v3/v4 structure)
+      let apiNames = [];
+      if (configJson?.dependencies) {
+        apiNames = configJson.dependencies
+          .filter(dep => dep?.api_name)
+          .map(dep => dep.api_name);
+      }
+      // Fallback guesses if none found
+      if (apiNames.length === 0) {
+        apiNames = ['predict_image', 'predict', 'classify', 'annotate'];
+      }
+
+      // Build candidate full endpoints in order of likelihood
+      const candidateEndpoints = [];
+      for (const name of apiNames) {
+        candidateEndpoints.push(`/run/${name}`); // new Gradio REST style
+        candidateEndpoints.push(`/${name}`);     // direct mapping
+      }
+
+      // Deduplicate while preserving order
+      const seen = new Set();
+      const orderedCandidates = candidateEndpoints.filter(ep => {
+        if (seen.has(ep)) return false;
+        seen.add(ep);
+        return true;
+      });
+
       let lastError = null;
       let json = null;
-      for (const ep of candidateEndpoints) {
+      let successfulEndpoint = null;
+
+      // 2. Try each derived endpoint
+      for (const ep of orderedCandidates) {
         try {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 30000);
+          const body = { data: [{ url: base64 }] };
           const response = await fetch(`${HF_BASE}${ep}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: [{ url: base64 }] }),
+            body: JSON.stringify(body),
             signal: controller.signal
           });
           clearTimeout(timeout);
           if (response.status === 404) {
-            // Endpoint not found, try next
-            lastError = new Error(`Endpoint ${ep} returned 404`);
-            console.warn(`[HF] 404 for ${ep}, trying next endpoint...`);
+            console.warn(`[HF] 404 for ${ep}`);
             continue;
           }
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Status ${response.status} ${errorText}`);
-          }
-          json = await response.json();
-          console.log('[HF] Success via endpoint', ep, json);
-          break;
+            if (!response.ok) {
+              const txt = await response.text();
+              throw new Error(`Status ${response.status} ${txt}`);
+            }
+            json = await response.json();
+            successfulEndpoint = ep;
+            console.log('[HF] Success via', ep, json);
+            break;
         } catch (err) {
           lastError = err;
-          console.warn('[HF] Attempt failed for endpoint', ep, err);
+          console.warn('[HF] Endpoint attempt failed', ep, err.message);
         }
       }
 
       if (!json) {
-        throw new Error(`All Hugging Face endpoints failed. Last error: ${lastError?.message}`);
+        throw new Error(`No working HF endpoint found. Tried: ${orderedCandidates.join(', ')}. Last error: ${lastError?.message}`);
       }
 
-      // Normalize Gradio output
-      // Expected shape: { data: [ { url|path ... } , ... ] }
-      const imgObj = json.data?.[0];
+      // 3. Parse image output (search in data array for first object with url/path & mime)
+      let imgObj = null;
+      if (Array.isArray(json.data)) {
+        imgObj = json.data.find(d => d && (d.url || d.path));
+      }
       let annotatedBase64 = null;
       if (imgObj) {
-        if (imgObj.url && imgObj.url.startsWith('data:')) {
-          annotatedBase64 = imgObj.url.split(',')[1];
-        } else if (imgObj.path && imgObj.path.startsWith('data:')) {
-          annotatedBase64 = imgObj.path.split(',')[1];
+        const candidate = imgObj.url || imgObj.path;
+        if (typeof candidate === 'string' && candidate.startsWith('data:')) {
+          annotatedBase64 = candidate.split(',')[1];
         }
       }
 
       setDetectionResult({
         category: 'huggingface',
-        result: 'Hugging Face annotated image',
+        result: `Hugging Face annotated image (endpoint: ${successfulEndpoint})`,
         confidence: 1,
-        garbageDetected: true, // Assume positive; backend could be extended to return flag
+        garbageDetected: true,
         annotatedImage: annotatedBase64
       });
       setFormData(prev => ({ ...prev, category: 'huggingface' }));
