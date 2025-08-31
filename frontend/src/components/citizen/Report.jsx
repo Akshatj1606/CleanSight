@@ -29,6 +29,8 @@ const Report = () => {
   const [detectionResult, setDetectionResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [detectionMethod, setDetectionMethod] = useState('default'); // 'default', 'huggingface'
+  const [backendAvailable, setBackendAvailable] = useState(true);
+  const [backendChecked, setBackendChecked] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [recentReports, setRecentReports] = useState([]);
   const [formData, setFormData] = useState({
@@ -45,6 +47,33 @@ const Report = () => {
       loadRecentReports();
     }
   }, [user]);
+
+  // Check backend availability (especially for deployed frontend hitting localhost API)
+  useEffect(() => {
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+    const isLocalApi = /localhost|127\.0\.0\.1/.test(apiUrl);
+    const isLocalFrontend = /localhost|127\.0\.0\.1/.test(window.location.hostname);
+    if (backendChecked) return;
+    // If frontend is deployed (not localhost) but API points to localhost, mark unavailable immediately
+    if (!isLocalFrontend && isLocalApi) {
+      setBackendAvailable(false);
+      setBackendChecked(true);
+      return;
+    }
+    // Otherwise perform a lightweight fetch with timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    fetch(apiUrl + '/', { signal: controller.signal })
+      .then(r => {
+        setBackendAvailable(r.ok);
+        setBackendChecked(true);
+      })
+      .catch(() => {
+        setBackendAvailable(false);
+        setBackendChecked(true);
+      })
+      .finally(() => clearTimeout(timeout));
+  }, [backendChecked]);
 
   const loadRecentReports = async () => {
     if (!user) {
@@ -469,6 +498,16 @@ const Report = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {!backendAvailable && backendChecked && (
+              <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+                Backend API not reachable from this environment. Default detection only.
+                { (import.meta.env.VITE_API_URL || 'http://localhost:5000').includes('localhost') && (
+                  <>
+                    <br />Set VITE_API_URL to your deployed backend URL to enable Hugging Face analysis.
+                  </>
+                )}
+              </div>
+            )}
             <div 
               className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-eco transition-colors cursor-pointer"
               onClick={() => document.getElementById('image-upload')?.click()}
@@ -502,8 +541,9 @@ const Report = () => {
                 <Button
                   variant={detectionMethod === 'huggingface' ? 'eco' : 'outline'}
                   size="sm"
-                  onClick={() => setDetectionMethod('huggingface')}
+                  onClick={() => backendAvailable && setDetectionMethod('huggingface')}
                   type="button"
+                  disabled={!backendAvailable}
                 >
                   Hugging Face Detection
                 </Button>
