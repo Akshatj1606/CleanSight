@@ -28,9 +28,6 @@ const Report = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [detectionResult, setDetectionResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [detectionMethod, setDetectionMethod] = useState('default'); // 'default', 'huggingface'
-  const [backendAvailable, setBackendAvailable] = useState(true);
-  const [backendChecked, setBackendChecked] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [recentReports, setRecentReports] = useState([]);
   const [formData, setFormData] = useState({
@@ -48,33 +45,6 @@ const Report = () => {
     }
   }, [user]);
 
-  // Check backend availability (especially for deployed frontend hitting localhost API)
-  useEffect(() => {
-    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
-    const isLocalApi = /localhost|127\.0\.0\.1/.test(apiUrl);
-    const isLocalFrontend = /localhost|127\.0\.0\.1/.test(window.location.hostname);
-    if (backendChecked) return;
-    // If frontend is deployed (not localhost) but API points to localhost, mark unavailable immediately
-    if (!isLocalFrontend && isLocalApi) {
-      setBackendAvailable(false);
-      setBackendChecked(true);
-      return;
-    }
-    // Otherwise perform a lightweight fetch with timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-    fetch(apiUrl + '/', { signal: controller.signal })
-      .then(r => {
-        setBackendAvailable(r.ok);
-        setBackendChecked(true);
-      })
-      .catch(() => {
-        setBackendAvailable(false);
-        setBackendChecked(true);
-      })
-      .finally(() => clearTimeout(timeout));
-  }, [backendChecked]);
-
   const loadRecentReports = async () => {
     if (!user) {
       console.log('No user found, skipping recent reports load'); // Debug log
@@ -89,126 +59,6 @@ const Report = () => {
     }
   };
 
-  // Hugging Face detection
-  const analyzeImageWithHuggingFace = async (file) => {
-    setIsAnalyzing(true);
-    setDetectionResult(null);
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const form = new FormData();
-      form.append('file', file);
-      let usedMode = 'backend-proxy';
-      let annotatedBase64 = null;
-      let confidence = 1;
-      let garbageDetected = true;
-      let success = false;
-      // Decide whether backend proxy is usable
-      const isLocalApi = /localhost|127\.0\.0\.1/.test(apiUrl);
-      const isHttpsPage = window.location.protocol === 'https:';
-      // If page is HTTPS and apiUrl is localhost (HTTP), skip (mixed content)
-      const skipBackend = (isHttpsPage && isLocalApi) || !backendAvailable;
-      if (!skipBackend) {
-        try {
-          const response = await fetch(`${apiUrl}/hf_predict`, { method: 'POST', body: form });
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-              annotatedBase64 = result.annotated_image || null;
-              confidence = result.confidence || 1;
-              garbageDetected = result.garbage_detected ?? true;
-              success = true;
-            } else {
-              console.warn('[HF] Backend proxy returned failure, will attempt direct Space', result.error);
-            }
-          } else {
-            console.warn('[HF] Backend proxy HTTP', response.status, 'will attempt direct Space');
-          }
-        } catch (e) {
-          console.warn('[HF] Backend proxy fetch error, will attempt direct Space', e);
-        }
-      } else {
-        usedMode = 'direct-space';
-      }
-
-      if (!success) {
-        // Direct Hugging Face Space fallback
-        usedMode = 'direct-space';
-        const hfBase = (import.meta.env.VITE_HF_SPACE_BASE || 'https://adityanaulakha-cleansight.hf.space').replace(/\/$/, '');
-        // Convert file to base64 (only if we haven't yet)
-        const toBase64 = (file) => new Promise((resolve, reject) => {
-          const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-        const base64 = await toBase64(file);
-        const candidateEndpoints = ['/run/predict_image', '/predict_image'];
-        for (const ep of candidateEndpoints) {
-          try {
-            const r = await fetch(hfBase + ep, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ data: [{ url: base64 }] })
-            });
-            if (r.status === 404) {
-              continue;
-            }
-            if (!r.ok) {
-              continue;
-            }
-            const json = await r.json();
-            const imgObj = json.data?.find(d => d && (d.url || d.path));
-            if (imgObj) {
-              const raw = imgObj.url || imgObj.path;
-              if (raw && raw.startsWith('data:')) {
-                annotatedBase64 = raw.split(',')[1];
-                success = true;
-                break;
-              }
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-      }
-
-      if (!success) {
-        throw new Error('No working Hugging Face detection endpoint available');
-      }
-
-      setDetectionResult({
-        category: 'huggingface',
-        result: `Hugging Face annotated image (${usedMode})`,
-        confidence,
-        garbageDetected,
-        annotatedImage: annotatedBase64
-      });
-      setFormData(prev => ({ ...prev, category: 'huggingface' }));
-    } catch (error) {
-      console.error('Hugging Face Analysis Error:', error);
-      setDetectionResult({
-        category: 'analysis-failed',
-        result: `Hugging Face AI analysis unavailable: ${error.message}`,
-        confidence: 0,
-        garbageDetected: false,
-        error: true
-      });
-      // Friendly message with guidance
-      alert(`Hugging Face AI analysis unavailable.\n${error.message}\n\nFallback: We'll try the default detector instead.`);
-      try {
-        // Automatic fallback to default YOLO detection
-        console.log('[HF] Falling back to default YOLO detection...');
-        await analyzeImageWithYOLO(file);
-        setDetectionMethod('default');
-      } catch (fallbackErr) {
-        console.error('Fallback YOLO detection also failed:', fallbackErr);
-      }
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // Existing YOLO detection
   const handleImageUpload = (event) => {
     const file = event.target.files?.[0];
     console.log('File selected:', file); // Debug log
@@ -233,11 +83,7 @@ const Report = () => {
       reader.onload = (e) => {
         console.log('File read successfully'); // Debug log
         setSelectedImage(e.target?.result);
-        if (detectionMethod === 'huggingface') {
-          analyzeImageWithHuggingFace(file);
-        } else {
-          analyzeImageWithYOLO(file);
-        }
+        analyzeImageWithYOLO(file);
       };
       reader.onerror = () => {
         console.error('Error reading file');
@@ -268,10 +114,13 @@ const Report = () => {
         method: 'POST',
         body: formData,
       });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       const result = await response.json();
+      console.log('🔍 YOLO Analysis Result:', result);
       
       if (result.success) {
         let detectionMessage = "";
@@ -565,16 +414,6 @@ const Report = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!backendAvailable && backendChecked && (
-              <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-                Backend API not reachable from this environment. Default detection only.
-                { (import.meta.env.VITE_API_URL || 'http://localhost:5000').includes('localhost') && (
-                  <>
-                    <br />Set VITE_API_URL to your deployed backend URL to enable Hugging Face analysis.
-                  </>
-                )}
-              </div>
-            )}
             <div 
               className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-eco transition-colors cursor-pointer"
               onClick={() => document.getElementById('image-upload')?.click()}
@@ -595,26 +434,6 @@ const Report = () => {
                 }
               }}
             >
-              {/* Detection method selector */}
-              <div className="flex justify-center gap-2 mb-4">
-                <Button
-                  variant={detectionMethod === 'default' ? 'eco' : 'outline'}
-                  size="sm"
-                  onClick={() => setDetectionMethod('default')}
-                  type="button"
-                >
-                  Default Detection
-                </Button>
-                <Button
-                  variant={detectionMethod === 'huggingface' ? 'eco' : 'outline'}
-                  size="sm"
-                  onClick={() => backendAvailable && setDetectionMethod('huggingface')}
-                  type="button"
-                  disabled={!backendAvailable}
-                >
-                  Hugging Face Detection
-                </Button>
-              </div>
               {selectedImage ? (
                 <div className="space-y-4">
                   <img 

@@ -6,4 +6,3 @@ torchvision
 Pillow
 numpy
 python-multipart
-gradio_client
