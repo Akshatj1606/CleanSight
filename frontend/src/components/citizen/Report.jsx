@@ -65,119 +65,24 @@ const Report = () => {
     setIsAnalyzing(true);
     setDetectionResult(null);
     try {
-      // Convert file to base64
-      const toBase64 = (file) => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = (error) => reject(error);
-      });
-      const base64 = await toBase64(file);
-      const HF_BASE = (import.meta.env.VITE_HF_SPACE_BASE || 'https://adityanaulakha-cleansight.hf.space').replace(/\/$/, '');
-
-      // 1. Introspect available API names from config endpoints
-      const configEndpoints = ['/config', '/api/config', '/info', '/api/info'];
-      let configJson = null;
-      for (const c of configEndpoints) {
-        try {
-          const r = await fetch(`${HF_BASE}${c}`);
-            if (r.ok) {
-              configJson = await r.json();
-              console.log('[HF] Retrieved config from', c, configJson);
-              break;
-            } else {
-              console.warn('[HF] Config endpoint failed', c, r.status);
-            }
-        } catch (e) {
-          console.warn('[HF] Config fetch error', c, e);
-        }
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const form = new FormData();
+      form.append('file', file);
+      const response = await fetch(`${apiUrl}/hf_predict`, { method: 'POST', body: form });
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(`HF proxy status ${response.status} ${txt}`);
       }
-
-      // Derive candidate api_names from dependencies (Gradio v3/v4 structure)
-      let apiNames = [];
-      if (configJson?.dependencies) {
-        apiNames = configJson.dependencies
-          .filter(dep => dep?.api_name)
-          .map(dep => dep.api_name);
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'HF proxy returned failure');
       }
-      // Fallback guesses if none found
-      if (apiNames.length === 0) {
-        apiNames = ['predict_image', 'predict', 'classify', 'annotate'];
-      }
-
-      // Build candidate full endpoints in order of likelihood
-      const candidateEndpoints = [];
-      for (const name of apiNames) {
-        candidateEndpoints.push(`/run/${name}`); // new Gradio REST style
-        candidateEndpoints.push(`/${name}`);     // direct mapping
-      }
-
-      // Deduplicate while preserving order
-      const seen = new Set();
-      const orderedCandidates = candidateEndpoints.filter(ep => {
-        if (seen.has(ep)) return false;
-        seen.add(ep);
-        return true;
-      });
-
-      let lastError = null;
-      let json = null;
-      let successfulEndpoint = null;
-
-      // 2. Try each derived endpoint
-      for (const ep of orderedCandidates) {
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 30000);
-          const body = { data: [{ url: base64 }] };
-          const response = await fetch(`${HF_BASE}${ep}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: controller.signal
-          });
-          clearTimeout(timeout);
-          if (response.status === 404) {
-            console.warn(`[HF] 404 for ${ep}`);
-            continue;
-          }
-            if (!response.ok) {
-              const txt = await response.text();
-              throw new Error(`Status ${response.status} ${txt}`);
-            }
-            json = await response.json();
-            successfulEndpoint = ep;
-            console.log('[HF] Success via', ep, json);
-            break;
-        } catch (err) {
-          lastError = err;
-          console.warn('[HF] Endpoint attempt failed', ep, err.message);
-        }
-      }
-
-      if (!json) {
-        throw new Error(`No working HF endpoint found. Tried: ${orderedCandidates.join(', ')}. Last error: ${lastError?.message}`);
-      }
-
-      // 3. Parse image output (search in data array for first object with url/path & mime)
-      let imgObj = null;
-      if (Array.isArray(json.data)) {
-        imgObj = json.data.find(d => d && (d.url || d.path));
-      }
-      let annotatedBase64 = null;
-      if (imgObj) {
-        const candidate = imgObj.url || imgObj.path;
-        if (typeof candidate === 'string' && candidate.startsWith('data:')) {
-          annotatedBase64 = candidate.split(',')[1];
-        }
-      }
-
       setDetectionResult({
         category: 'huggingface',
-        result: `Hugging Face annotated image (endpoint: ${successfulEndpoint})`,
-        confidence: 1,
-        garbageDetected: true,
-        annotatedImage: annotatedBase64
+        result: 'Hugging Face annotated image',
+        confidence: result.confidence || 1,
+        garbageDetected: result.garbage_detected ?? true,
+        annotatedImage: result.annotated_image || null
       });
       setFormData(prev => ({ ...prev, category: 'huggingface' }));
     } catch (error) {

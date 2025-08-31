@@ -11,6 +11,16 @@ from ultralytics import YOLO
 from PIL import Image
 import io
 import base64
+import tempfile
+import traceback
+
+try:
+    from gradio_client import Client, handle_file
+    HF_CLIENT = Client("adityanaulakha/CleanSight")
+    print("✅ Hugging Face Gradio client initialized")
+except Exception as e:
+    HF_CLIENT = None
+    print(f"⚠️ Could not initialize Hugging Face client: {e}")
 
 # ✅ Create FastAPI app
 
@@ -88,6 +98,50 @@ async def predict(file: UploadFile = File(...)):
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@app.post("/hf_predict")
+async def hf_predict(file: UploadFile = File(...)):
+    """Proxy to Hugging Face Space (/predict_image) returning annotated image.
+    This avoids CORS issues by calling from the backend using gradio_client.
+    """
+    if HF_CLIENT is None:
+        return {"success": False, "error": "Hugging Face client not initialized on server"}
+    try:
+        contents = await file.read()
+        with tempfile.NamedTemporaryFile(delete=False, suffix="_upload.jpg") as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+        # Call the space predict function
+        print("🔄 Calling Hugging Face Space /predict_image with", tmp_path)
+        result = HF_CLIENT.predict(image=handle_file(tmp_path), api_name="/predict_image")
+        # result expected to be dict with path or url
+        annotated_base64 = None
+        if isinstance(result, dict):
+            img_path = result.get("path") or result.get("url")
+            if img_path:
+                try:
+                    if img_path.startswith("http"):
+                        import requests
+                        resp = requests.get(img_path)
+                        if resp.ok:
+                            annotated_base64 = base64.b64encode(resp.content).decode("utf-8")
+                    else:
+                        with open(img_path, "rb") as f:
+                            annotated_base64 = base64.b64encode(f.read()).decode("utf-8")
+                except Exception as ie:
+                    print("⚠️ Failed to load annotated image from path/url:", ie)
+        return {
+            "success": True,
+            "source": "huggingface",
+            "garbage_detected": True,  # Space currently assumed to always return annotated detection
+            "confidence": 1.0,
+            "annotated_image": annotated_base64,
+            "raw_result": result,
+        }
+    except Exception as e:
+        traceback.print_exc()
+        return {"success": False, "error": f"HF proxy error: {e}"}
 
 # ✅ CLI mode
 def test_model_inference():
