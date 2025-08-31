@@ -94,7 +94,16 @@ const Report = () => {
         garbageDetected: false,
         error: true
       });
-      alert(`Hugging Face AI analysis unavailable.\n${error.message}`);
+      // Friendly message with guidance
+      alert(`Hugging Face AI analysis unavailable.\n${error.message}\n\nFallback: We'll try the default detector instead.`);
+      try {
+        // Automatic fallback to default YOLO detection
+        console.log('[HF] Falling back to default YOLO detection...');
+        await analyzeImageWithYOLO(file);
+        setDetectionMethod('default');
+      } catch (fallbackErr) {
+        console.error('Fallback YOLO detection also failed:', fallbackErr);
+      }
     } finally {
       setIsAnalyzing(false);
     }
