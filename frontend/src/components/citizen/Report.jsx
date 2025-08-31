@@ -71,7 +71,11 @@ const Report = () => {
         method: 'POST',
         body: formData,
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        let errorText = await response.text();
+        console.error('Hugging Face API error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      }
       const result = await response.json();
       setDetectionResult({
         category: result.category || 'huggingface',
@@ -82,14 +86,15 @@ const Report = () => {
       });
       setFormData(prev => ({ ...prev, category: result.category || 'huggingface' }));
     } catch (error) {
+      console.error('Hugging Face Analysis Error:', error);
       setDetectionResult({
         category: 'analysis-failed',
-        result: 'Hugging Face AI analysis unavailable',
+        result: `Hugging Face AI analysis unavailable: ${error.message}`,
         confidence: 0,
         garbageDetected: false,
         error: true
       });
-      alert('Hugging Face AI analysis unavailable.');
+      alert(`Hugging Face AI analysis unavailable.\n${error.message}`);
     } finally {
       setIsAnalyzing(false);
     }
