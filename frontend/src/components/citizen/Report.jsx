@@ -97,21 +97,91 @@ const Report = () => {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const form = new FormData();
       form.append('file', file);
-      const response = await fetch(`${apiUrl}/hf_predict`, { method: 'POST', body: form });
-      if (!response.ok) {
-        const txt = await response.text();
-        throw new Error(`HF proxy status ${response.status} ${txt}`);
+      let usedMode = 'backend-proxy';
+      let annotatedBase64 = null;
+      let confidence = 1;
+      let garbageDetected = true;
+      let success = false;
+      // Decide whether backend proxy is usable
+      const isLocalApi = /localhost|127\.0\.0\.1/.test(apiUrl);
+      const isHttpsPage = window.location.protocol === 'https:';
+      // If page is HTTPS and apiUrl is localhost (HTTP), skip (mixed content)
+      const skipBackend = (isHttpsPage && isLocalApi) || !backendAvailable;
+      if (!skipBackend) {
+        try {
+          const response = await fetch(`${apiUrl}/hf_predict`, { method: 'POST', body: form });
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              annotatedBase64 = result.annotated_image || null;
+              confidence = result.confidence || 1;
+              garbageDetected = result.garbage_detected ?? true;
+              success = true;
+            } else {
+              console.warn('[HF] Backend proxy returned failure, will attempt direct Space', result.error);
+            }
+          } else {
+            console.warn('[HF] Backend proxy HTTP', response.status, 'will attempt direct Space');
+          }
+        } catch (e) {
+          console.warn('[HF] Backend proxy fetch error, will attempt direct Space', e);
+        }
+      } else {
+        usedMode = 'direct-space';
       }
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'HF proxy returned failure');
+
+      if (!success) {
+        // Direct Hugging Face Space fallback
+        usedMode = 'direct-space';
+        const hfBase = (import.meta.env.VITE_HF_SPACE_BASE || 'https://adityanaulakha-cleansight.hf.space').replace(/\/$/, '');
+        // Convert file to base64 (only if we haven't yet)
+        const toBase64 = (file) => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        const base64 = await toBase64(file);
+        const candidateEndpoints = ['/run/predict_image', '/predict_image'];
+        for (const ep of candidateEndpoints) {
+          try {
+            const r = await fetch(hfBase + ep, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data: [{ url: base64 }] })
+            });
+            if (r.status === 404) {
+              continue;
+            }
+            if (!r.ok) {
+              continue;
+            }
+            const json = await r.json();
+            const imgObj = json.data?.find(d => d && (d.url || d.path));
+            if (imgObj) {
+              const raw = imgObj.url || imgObj.path;
+              if (raw && raw.startsWith('data:')) {
+                annotatedBase64 = raw.split(',')[1];
+                success = true;
+                break;
+              }
+            }
+          } catch (e) {
+            continue;
+          }
+        }
       }
+
+      if (!success) {
+        throw new Error('No working Hugging Face detection endpoint available');
+      }
+
       setDetectionResult({
         category: 'huggingface',
-        result: 'Hugging Face annotated image',
-        confidence: result.confidence || 1,
-        garbageDetected: result.garbage_detected ?? true,
-        annotatedImage: result.annotated_image || null
+        result: `Hugging Face annotated image (${usedMode})`,
+        confidence,
+        garbageDetected,
+        annotatedImage: annotatedBase64
       });
       setFormData(prev => ({ ...prev, category: 'huggingface' }));
     } catch (error) {
