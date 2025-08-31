@@ -198,13 +198,10 @@ const Report = () => {
         method: 'POST',
         body: formData,
       });
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
       const result = await response.json();
-      console.log('🔍 YOLO Analysis Result:', result);
       
       if (result.success) {
         let detectionMessage = "";
