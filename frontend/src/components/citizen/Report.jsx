@@ -73,25 +73,63 @@ const Report = () => {
         reader.onerror = (error) => reject(error);
       });
       const base64 = await toBase64(file);
-      // Prepare Gradio API request
-      const response = await fetch('https://adityanaulakha-cleansight.hf.space/api/predict_image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [{ url: base64 }] })
-      });
-      if (!response.ok) {
-        let errorText = await response.text();
-        console.error('Hugging Face API error:', response.status, errorText);
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      // Try multiple possible Gradio REST endpoints (order of likelihood)
+      const HF_BASE = 'https://adityanaulakha-cleansight.hf.space';
+      const candidateEndpoints = ['/run/predict_image', '/predict_image', '/api/predict_image'];
+      let lastError = null;
+      let json = null;
+      for (const ep of candidateEndpoints) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30000);
+          const response = await fetch(`${HF_BASE}${ep}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: [{ url: base64 }] }),
+            signal: controller.signal
+          });
+          clearTimeout(timeout);
+          if (response.status === 404) {
+            // Endpoint not found, try next
+            lastError = new Error(`Endpoint ${ep} returned 404`);
+            console.warn(`[HF] 404 for ${ep}, trying next endpoint...`);
+            continue;
+          }
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Status ${response.status} ${errorText}`);
+          }
+          json = await response.json();
+          console.log('[HF] Success via endpoint', ep, json);
+          break;
+        } catch (err) {
+          lastError = err;
+          console.warn('[HF] Attempt failed for endpoint', ep, err);
+        }
       }
-      const result = await response.json();
-      // result.data[0] is the annotated image object
+
+      if (!json) {
+        throw new Error(`All Hugging Face endpoints failed. Last error: ${lastError?.message}`);
+      }
+
+      // Normalize Gradio output
+      // Expected shape: { data: [ { url|path ... } , ... ] }
+      const imgObj = json.data?.[0];
+      let annotatedBase64 = null;
+      if (imgObj) {
+        if (imgObj.url && imgObj.url.startsWith('data:')) {
+          annotatedBase64 = imgObj.url.split(',')[1];
+        } else if (imgObj.path && imgObj.path.startsWith('data:')) {
+          annotatedBase64 = imgObj.path.split(',')[1];
+        }
+      }
+
       setDetectionResult({
         category: 'huggingface',
         result: 'Hugging Face annotated image',
         confidence: 1,
-        garbageDetected: true,
-        annotatedImage: result.data && result.data[0] && result.data[0].url ? result.data[0].url.split(',')[1] : null
+        garbageDetected: true, // Assume positive; backend could be extended to return flag
+        annotatedImage: annotatedBase64
       });
       setFormData(prev => ({ ...prev, category: 'huggingface' }));
     } catch (error) {
