@@ -65,11 +65,19 @@ const Report = () => {
     setIsAnalyzing(true);
     setDetectionResult(null);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch('https://adityanaulakha-CleanSight.hf.space/predict', {
+      // Convert file to base64
+      const toBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+      });
+      const base64 = await toBase64(file);
+      // Prepare Gradio API request
+      const response = await fetch('https://adityanaulakha-cleansight.hf.space/api/predict_image', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [{ url: base64 }] })
       });
       if (!response.ok) {
         let errorText = await response.text();
@@ -77,14 +85,15 @@ const Report = () => {
         throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
       const result = await response.json();
+      // result.data[0] is the annotated image object
       setDetectionResult({
-        category: result.category || 'huggingface',
-        result: result.result || 'Hugging Face model result',
-        confidence: result.confidence || 0,
-        garbageDetected: result.garbage_detected || false,
-        annotatedImage: result.annotated_image || null
+        category: 'huggingface',
+        result: 'Hugging Face annotated image',
+        confidence: 1,
+        garbageDetected: true,
+        annotatedImage: result.data && result.data[0] && result.data[0].url ? result.data[0].url.split(',')[1] : null
       });
-      setFormData(prev => ({ ...prev, category: result.category || 'huggingface' }));
+      setFormData(prev => ({ ...prev, category: 'huggingface' }));
     } catch (error) {
       console.error('Hugging Face Analysis Error:', error);
       setDetectionResult({
