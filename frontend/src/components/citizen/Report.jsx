@@ -28,6 +28,7 @@ const Report = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [detectionResult, setDetectionResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [detectionMethod, setDetectionMethod] = useState('default'); // 'default', 'huggingface'
   const [currentLocation, setCurrentLocation] = useState(null);
   const [recentReports, setRecentReports] = useState([]);
   const [formData, setFormData] = useState({
@@ -59,6 +60,42 @@ const Report = () => {
     }
   };
 
+  // Hugging Face detection
+  const analyzeImageWithHuggingFace = async (file) => {
+    setIsAnalyzing(true);
+    setDetectionResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('https://adityanaulakha-CleanSight.hf.space/predict', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      setDetectionResult({
+        category: result.category || 'huggingface',
+        result: result.result || 'Hugging Face model result',
+        confidence: result.confidence || 0,
+        garbageDetected: result.garbage_detected || false,
+        annotatedImage: result.annotated_image || null
+      });
+      setFormData(prev => ({ ...prev, category: result.category || 'huggingface' }));
+    } catch (error) {
+      setDetectionResult({
+        category: 'analysis-failed',
+        result: 'Hugging Face AI analysis unavailable',
+        confidence: 0,
+        garbageDetected: false,
+        error: true
+      });
+      alert('Hugging Face AI analysis unavailable.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Existing YOLO detection
   const handleImageUpload = (event) => {
     const file = event.target.files?.[0];
     console.log('File selected:', file); // Debug log
@@ -83,7 +120,11 @@ const Report = () => {
       reader.onload = (e) => {
         console.log('File read successfully'); // Debug log
         setSelectedImage(e.target?.result);
-        analyzeImageWithYOLO(file);
+        if (detectionMethod === 'huggingface') {
+          analyzeImageWithHuggingFace(file);
+        } else {
+          analyzeImageWithYOLO(file);
+        }
       };
       reader.onerror = () => {
         console.error('Error reading file');
@@ -434,6 +475,25 @@ const Report = () => {
                 }
               }}
             >
+              {/* Detection method selector */}
+              <div className="flex justify-center gap-2 mb-4">
+                <Button
+                  variant={detectionMethod === 'default' ? 'eco' : 'outline'}
+                  size="sm"
+                  onClick={() => setDetectionMethod('default')}
+                  type="button"
+                >
+                  Default Detection
+                </Button>
+                <Button
+                  variant={detectionMethod === 'huggingface' ? 'eco' : 'outline'}
+                  size="sm"
+                  onClick={() => setDetectionMethod('huggingface')}
+                  type="button"
+                >
+                  Hugging Face Detection
+                </Button>
+              </div>
               {selectedImage ? (
                 <div className="space-y-4">
                   <img 
