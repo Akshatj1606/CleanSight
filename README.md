@@ -8,7 +8,7 @@
 
 **CleanSight** is a revolutionary waste management platform that leverages AI-powered garbage detection to connect citizens, waste collectors, and institutions in creating cleaner, more sustainable communities. Built with cutting-edge technologies including custom YOLO models, React, and intelligent zone-based task distribution.
 
-![CleanSight Platform](./docs/hero-banner.png)
+![CleanSight Platform](./docs/hero-banner.png) -
 
 ## 🎯 **Vision & Mission**
 
