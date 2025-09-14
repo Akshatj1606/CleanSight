@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Layout from "./components/Layout";
@@ -36,11 +36,13 @@ import InstitutionSettings from "./components/instituitions/Settings";
 
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
+import AddressOnboarding from "./components/auth/AddressOnboarding";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
 
 import NotFound from "./components/NotFound";
+import { ROUTES } from '@/lib/routes';
 
 const App = () => (
   <ThemeProvider>
@@ -48,161 +50,163 @@ const App = () => (
       <BrowserRouter>
         <Layout>
           <Routes>
-              <Route path="/" element={
+              <Route path={ROUTES.ROOT} element={
                 <PublicRoute>
                   <LandingPage />
                 </PublicRoute>
               } />
-              <Route path="/impact" element={
+              <Route path={ROUTES.IMPACT} element={
                 <PublicRoute>
                   <Impact />
                 </PublicRoute>
               } />
-              <Route path="/help" element={
+              <Route path={ROUTES.HELP} element={
                 <PublicRoute>
                   <Help />
                 </PublicRoute>
               } />
               
-              <Route path="/login" element={
+              <Route path={ROUTES.LOGIN} element={
                 <PublicRoute>
                   <Login />
                 </PublicRoute>
               } />
-              <Route path="/register" element={
+              <Route path={ROUTES.REGISTER} element={
                 <PublicRoute>
                   <Register />
                 </PublicRoute>
               } />
+              <Route path={ROUTES.ONBOARDING_ADDRESS} element={
+                <ProtectedRoute allowedRoles={['citizen','ragpicker','institution','admin']}>
+                  <AddressOnboarding />
+                </ProtectedRoute>
+              } />
               
-              <Route path="/dashboard" element={
+              <Route path={ROUTES.CITIZEN_DASHBOARD} element={
                 <ProtectedRoute allowedRoles={['citizen']}>
                   <Dashboard />
                 </ProtectedRoute>
               } />
-              <Route path="/report" element={
+              <Route path={ROUTES.CITIZEN_REPORT} element={
                 <ProtectedRoute allowedRoles={['citizen']}>
                   <Report />
                 </ProtectedRoute>
               } />
-              <Route path="/report/new" element={
-                <ProtectedRoute allowedRoles={['citizen']}>
-                  <Report />
-                </ProtectedRoute>
-              } />
-              <Route path="/map" element={
+              {/* Alias /report/new -> /report (same component) */}
+              <Route path={ROUTES.CITIZEN_REPORT_NEW} element={<Navigate to={ROUTES.CITIZEN_REPORT} replace />} />
+              <Route path={ROUTES.CITIZEN_MAP} element={
                 <ProtectedRoute allowedRoles={['citizen']}>
                   <Map />
                 </ProtectedRoute>
               } />
-              <Route path="/leaderboard" element={
+              <Route path={ROUTES.CITIZEN_LEADERBOARD} element={
                 <ProtectedRoute allowedRoles={['citizen']}>
                   <Leaderboard />
                 </ProtectedRoute>
               } />
-              <Route path="/rewards" element={
+              <Route path={ROUTES.CITIZEN_REWARDS} element={
                 <ProtectedRoute allowedRoles={['citizen']}>
                   <Rewards />
                 </ProtectedRoute>
               } />
-              <Route path="/community" element={
+              <Route path={ROUTES.CITIZEN_COMMUNITY} element={
                 <ProtectedRoute allowedRoles={['citizen']}>
                   <Community />
                 </ProtectedRoute>
               } />
-              <Route path="/settings" element={
+              <Route path={ROUTES.CITIZEN_SETTINGS} element={
                 <ProtectedRoute allowedRoles={['citizen']}>
                   <CitizenSettings />
                 </ProtectedRoute>
               } />
               
               {/* Ragpicker Routes - Protected */}
-              <Route path="/r/tasks" element={
+              <Route path={ROUTES.RAGPICKER_TASKS} element={
                 <ProtectedRoute allowedRoles={['ragpicker']}>
                   <RagpickerTasks />
                 </ProtectedRoute>
               } />
-              <Route path="/r/map" element={
+              <Route path={ROUTES.RAGPICKER_MAP} element={
                 <ProtectedRoute allowedRoles={['ragpicker']}>
                   <RagpickerMap />
                 </ProtectedRoute>
               } />
-              <Route path="/r/earnings" element={
+              <Route path={ROUTES.RAGPICKER_EARNINGS} element={
                 <ProtectedRoute allowedRoles={['ragpicker']}>
                   <RagpickerEarnings />
                 </ProtectedRoute>
               } />
-              <Route path="/r/profile" element={
+              <Route path={ROUTES.RAGPICKER_PROFILE} element={
                 <ProtectedRoute allowedRoles={['ragpicker']}>
                   <RagpickerProfile />
                 </ProtectedRoute>
               } />
               
               {/* Institution Routes - Protected */}
-              <Route path="/org/dashboard" element={
+              <Route path={ROUTES.ORG_DASHBOARD} element={
                 <ProtectedRoute allowedRoles={['institution']}>
                   <InstitutionDashboard />
                 </ProtectedRoute>
               } />
-              <Route path="/org/reports" element={
+              <Route path={ROUTES.ORG_REPORTS} element={
                 <ProtectedRoute allowedRoles={['institution']}>
                   <InstitutionReports />
                 </ProtectedRoute>
               } />
-              <Route path="/org/members" element={
+              <Route path={ROUTES.ORG_MEMBERS} element={
                 <ProtectedRoute allowedRoles={['institution']}>
                   <InstitutionMembers />
                 </ProtectedRoute>
               } />
-              <Route path="/org/analytics" element={
+              <Route path={ROUTES.ORG_ANALYTICS} element={
                 <ProtectedRoute allowedRoles={['institution']}>
                   <InstitutionAnalytics />
                 </ProtectedRoute>
               } />
-              <Route path="/org/settings" element={
+              <Route path={ROUTES.ORG_SETTINGS} element={
                 <ProtectedRoute allowedRoles={['institution']}>
                   <InstitutionSettings />
                 </ProtectedRoute>
               } />
               
               {/* Admin Routes - Protected */}
-              <Route path="/admin/overview" element={
+              <Route path={ROUTES.ADMIN_OVERVIEW} element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminDashboard />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/moderation" element={
+              <Route path={ROUTES.ADMIN_MODERATION} element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminModeration />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/assign" element={
+              <Route path={ROUTES.ADMIN_ASSIGN} element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminAssignment />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/heatmap" element={
+              <Route path={ROUTES.ADMIN_HEATMAP} element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminHeatmap />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/users" element={
+              <Route path={ROUTES.ADMIN_USERS} element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminUsers />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/partners" element={
+              <Route path={ROUTES.ADMIN_PARTNERS} element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminPartners />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/settings" element={
+              <Route path={ROUTES.ADMIN_SETTINGS} element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminSettings />
                 </ProtectedRoute>
               } />
               
-              <Route path="*" element={<NotFound />} />
+              <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
             </Routes>
           </Layout>
         </BrowserRouter>

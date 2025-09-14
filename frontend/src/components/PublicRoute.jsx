@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getDefaultRouteForRole } from '@/lib/routes';
 
 const PublicRoute = ({ children }) => {
   const { user, userRole, loading } = useAuth();
@@ -19,13 +20,7 @@ const PublicRoute = ({ children }) => {
 
   // If user is logged in, redirect to their appropriate dashboard
   if (user && userRole) {
-    const roleRoutes = {
-      'citizen': '/dashboard',
-      'ragpicker': '/r/tasks',
-      'institution': '/org/dashboard',
-      'admin': '/admin/overview'
-    };
-    return <Navigate to={roleRoutes[userRole] || '/dashboard'} replace />;
+    return <Navigate to={getDefaultRouteForRole(userRole)} replace />;
   }
 
   // If not logged in, show the public route

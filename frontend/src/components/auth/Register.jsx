@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,10 +24,17 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getStates, getDistricts, getZones, getFullLocationString } from '@/lib/locationData';
+import { signInWithGoogleRaw, signOut as googleSignOut } from '@/lib/firebaseAuthService';
+import { ensureUserDoc } from '@/lib/firebaseUserService';
 
 const Register = () => {
-  const { signUp } = useAuth();
+  const { signUp, user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isGoogleFlow = searchParams.get('google') === '1';
+  const pendingEmail = (()=>{ try { return sessionStorage.getItem('pendingGoogleEmail') || ''; } catch(_) { return ''; } })();
   
   const [step, setStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState('');
@@ -36,7 +43,7 @@ const Register = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
+    email: isGoogleFlow ? pendingEmail : '',
     password: '',
     confirmPassword: '',
     phoneNumber: '',
@@ -114,8 +121,62 @@ const Register = () => {
   const handleRoleSelect = (role) => {
     setSelectedRole(role.id);
     setFormData(prev => ({ ...prev, role: role.id }));
-    setStep(2);
+    try { sessionStorage.setItem('pendingGoogleRole', role.id); } catch(_) {}
   };
+
+  // Restore role & advance if coming back with google flow
+  useEffect(() => {
+    if (isGoogleFlow && step === 1) {
+      try {
+        const r = sessionStorage.getItem('pendingGoogleRole');
+        if (r) {
+          setSelectedRole(r);
+          setFormData(prev => ({ ...prev, role: r }));
+          // Do NOT auto-advance; wait for user to click Continue or Google
+        }
+      } catch(_) {}
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGoogleFlow, step]);
+
+  const handleGoogleStep1 = async () => {
+    if (!selectedRole) {
+      alert('Please select a role first.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const cred = await signInWithGoogleRaw();
+      const email = cred.user.email;
+      // Check if user profile already exists
+      const { getUserProfile } = await import('@/lib/firebaseUserService');
+      const existing = await getUserProfile(cred.user.uid);
+      if (existing) {
+        // Existing user; send them to dashboard (or login) directly
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+      try {
+        sessionStorage.setItem('pendingGoogleEmail', email);
+        sessionStorage.setItem('pendingGoogleRole', selectedRole);
+      } catch(_) {}
+      // Sign out so we can finish details before finalizing
+      await googleSignOut();
+      navigate('/register?google=1', { replace: true });
+    } catch (e) {
+      console.error('Google init failed', e);
+      alert(e.message || 'Google sign-in failed to initialize');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // If already logged in AND not mid Google deferred flow, redirect
+  useEffect(() => {
+    if (!user) return;
+    // In Google flow we only sign in at final submission now, so safe to redirect immediately
+    navigate('/dashboard', { replace: true });
+  }, [user, navigate]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -128,25 +189,40 @@ const Register = () => {
 
   const validateStep = () => {
     if (step === 2) {
-      if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword || !formData.phoneNumber) {
-        alert('Please fill in all required fields');
-        return false;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        alert('Passwords do not match');
-        return false;
-      }
-      if (formData.password.length < 6) {
-        alert('Password must be at least 6 characters long');
-        return false;
-      }
-      if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
-        alert('Please enter a valid email address');
-        return false;
-      }
-      if (!/^\d{10}$/.test(formData.phoneNumber)) {
-        alert('Please enter a valid 10-digit phone number');
-        return false;
+      if (isGoogleFlow) {
+        if (!formData.firstName || !formData.lastName || !formData.email || !formData.phoneNumber) {
+          alert('Please fill in all required fields');
+          return false;
+        }
+        if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+          alert('Please enter a valid email');
+          return false;
+        }
+        if (!/^\d{10}$/.test(formData.phoneNumber)) {
+          alert('Please enter a valid 10-digit phone number');
+          return false;
+        }
+      } else {
+        if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword || !formData.phoneNumber) {
+          alert('Please fill in all required fields');
+          return false;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          alert('Passwords do not match');
+          return false;
+        }
+        if (formData.password.length < 6) {
+          alert('Password must be at least 6 characters long');
+          return false;
+        }
+        if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+          alert('Please enter a valid email address');
+          return false;
+        }
+        if (!/^\d{10}$/.test(formData.phoneNumber)) {
+          alert('Please enter a valid 10-digit phone number');
+          return false;
+        }
       }
     } else if (step === 3) {
       if (!formData.state || !formData.city || !formData.zone || !formData.address.trim()) {
@@ -176,7 +252,47 @@ const Register = () => {
         fullLocation: getFullLocationString(formData.state, formData.city, formData.zone)
       };
       
-      await signUp(formData.email, formData.password, userData);
+      if (isGoogleFlow) {
+        // Defer Google auth until final step
+        if (step === 2) {
+          // Move to location step
+            setStep(3);
+            setLoading(false);
+            return;
+        } else if (step === 3 && selectedRole !== 'citizen') {
+          // Non-citizen roles have additional details step next
+          setStep(4);
+          setLoading(false);
+          return;
+        } else if ((step === 3 && selectedRole === 'citizen') || (step === 4 && selectedRole !== 'citizen')) {
+          // Finalization point: perform Google sign-in now
+          const cred = await signInWithGoogleRaw();
+          await ensureUserDoc(cred.user);
+          try {
+            const { updateUserProfile } = await import('@/lib/firebaseUserService');
+            await updateUserProfile(cred.user.uid, { ...userData, email: cred.user.email, role: selectedRole });
+          } catch (e2) {
+            console.warn('Failed to merge supplemental Google user details', e2);
+          }
+          try { sessionStorage.removeItem('pendingGoogleEmail'); sessionStorage.removeItem('pendingGoogleRole'); } catch(_) {}
+          // user effect will redirect
+        }
+      } else {
+        // Email/password flow
+        if ((step === 2 && selectedRole === 'citizen') || (step === 3 && selectedRole !== 'citizen')) {
+          // Not yet collected location -> advance
+          if (selectedRole === 'citizen') {
+            setStep(3);
+          } else {
+            setStep(step + 1); // move to location or additional details accordingly
+          }
+          setLoading(false);
+          return;
+        } else if ((step === 3 && selectedRole === 'citizen') || (step === 4 && selectedRole !== 'citizen')) {
+          await signUp(formData.email, formData.password, userData);
+          try { sessionStorage.removeItem('pendingGoogleEmail'); sessionStorage.removeItem('pendingGoogleRole'); } catch(_) {}
+        }
+      }
     } catch (error) {
       console.error('Registration failed:', error);
       alert('Registration failed. Please try again.');
@@ -330,6 +446,40 @@ const Register = () => {
                       </motion.div>
                     ))}
                   </div>
+
+                  <div className="space-y-4 mt-2">
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.55 }}
+                    >
+                      <Button
+                        type="button"
+                        disabled={!selectedRole}
+                        onClick={() => setStep(2)}
+                        className="w-full py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+                      >
+                        {selectedRole ? 'Continue' : 'Select a role to continue'}
+                      </Button>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.65 }}
+                    >
+                      <Button
+                        type="button"
+                        disabled={loading || !selectedRole}
+                        onClick={handleGoogleStep1}
+                        variant="outline"
+                        className="w-full py-3 bg-white border border-gray-300 hover:border-emerald-400 text-gray-700 hover:text-emerald-700 font-medium rounded-xl shadow-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                        {loading ? 'Processing...' : 'Use Google' }
+                      </Button>
+                      <p className="text-[11px] text-gray-500 mt-2 text-center">You can proceed normally or start with Google.</p>
+                    </motion.div>
+                  </div>
                 </motion.div>
               )}
 
@@ -469,10 +619,14 @@ const Register = () => {
                       type="email"
                       placeholder="Email Address"
                       value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      onChange={e => !isGoogleFlow && setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      disabled={isGoogleFlow}
                       className="pl-12 py-3 border-2 rounded-xl focus:border-emerald-400 transition-all duration-300 bg-white/50 backdrop-blur-sm"
                       required
                     />
+                    {isGoogleFlow && (
+                      <span className="absolute -bottom-5 left-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5">Google account</span>
+                    )}
                   </motion.div>
 
                   <motion.div 
@@ -492,6 +646,7 @@ const Register = () => {
                     />
                   </motion.div>
 
+                  {!isGoogleFlow && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <motion.div 
                       initial={{ opacity: 0, x: -20 }}
@@ -527,6 +682,7 @@ const Register = () => {
                       />
                     </motion.div>
                   </div>
+                  )}
 
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -534,11 +690,14 @@ const Register = () => {
                     transition={{ delay: 0.9 }}
                   >
                     <Button 
-                      type="button" 
-                      onClick={handleNext} 
-                      className="w-full py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                      type="submit" 
+                      disabled={loading || (isGoogleFlow && !formData.email)}
+                      className={`w-full py-3 ${isGoogleFlow ? 'bg-white border border-gray-300 hover:border-emerald-400 text-gray-700 hover:text-emerald-700' : 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white'} font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-60`}
                     >
-                      Continue to Location
+                      {isGoogleFlow && <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />}
+                      {loading ? 'Processing...' : (
+                        isGoogleFlow ? 'Continue to Location' : 'Continue to Location'
+                      )}
                     </Button>
                   </motion.div>
                 </motion.div>
@@ -743,27 +902,38 @@ const Register = () => {
                       <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                        className={`w-full py-3 ${isGoogleFlow ? 'bg-white border border-gray-300 hover:border-emerald-400 text-gray-700 hover:text-emerald-700' : 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white'} font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5`}
                       >
                         {loading ? (
                           <div className="flex items-center gap-3">
-                            <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Creating Account...
+                            <div className="w-5 h-5 border-3 border-current border-t-transparent rounded-full animate-spin"></div>
+                            {isGoogleFlow ? 'Finalizing...' : 'Creating Account...'}
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-2">
-                            <Check className="w-5 h-5" />
-                            Create Account
+                            {isGoogleFlow && <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />}
+                            {isGoogleFlow ? 'Complete with Google' : 'Create Account'}
                           </div>
                         )}
                       </Button>
                     ) : (
                       <Button 
-                        type="button" 
-                        onClick={handleNext} 
-                        className="w-full py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                        type={isGoogleFlow ? 'submit' : 'button'} 
+                        onClick={!isGoogleFlow ? handleNext : undefined} 
+                        disabled={loading}
+                        className={`w-full py-3 ${isGoogleFlow ? 'bg-white border border-gray-300 hover:border-emerald-400 text-gray-700 hover:text-emerald-700' : 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white'} font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5`}
                       >
-                        Continue to Additional Details
+                        {loading ? (
+                          <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 border-3 border-current border-t-transparent rounded-full animate-spin"></div>
+                            {isGoogleFlow ? 'Continuing...' : 'Processing...'}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            {isGoogleFlow && <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />}
+                            {isGoogleFlow ? 'Continue to Additional Details' : 'Continue to Additional Details'}
+                          </div>
+                        )}
                       </Button>
                     )}
                   </motion.div>
@@ -972,17 +1142,17 @@ const Register = () => {
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                      className={`w-full py-3 ${isGoogleFlow ? 'bg-white border border-gray-300 hover:border-emerald-400 text-gray-700 hover:text-emerald-700' : 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white'} font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5`}
                     >
                       {loading ? (
                         <div className="flex items-center gap-3">
-                          <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Creating Account...
+                          <div className="w-5 h-5 border-3 border-current border-t-transparent rounded-full animate-spin"></div>
+                          {isGoogleFlow ? 'Finalizing...' : 'Creating Account...'}
                         </div>
                       ) : (
                         <div className="flex items-center justify-center gap-2">
-                          <Check className="w-5 h-5" />
-                          Create Account
+                          {isGoogleFlow && <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />}
+                          {isGoogleFlow ? 'Complete with Google' : 'Create Account'}
                         </div>
                       )}
                     </Button>

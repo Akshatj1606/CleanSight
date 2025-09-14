@@ -6,7 +6,8 @@ import {
   signOut as fbSignOut,
   getCurrentUserWithProfile,
   updateProfileData,
-  mapAuthError
+  mapAuthError,
+  signInWithGoogle as fbSignInWithGoogle
 } from '@/lib/firebaseAuthService';
 import { ensureUserDoc } from '@/lib/firebaseUserService';
 // Fallback legacy local storage (migration)
@@ -92,6 +93,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signInWithGoogle = async (roleHint = 'citizen') => {
+    setLoading(true);
+    try {
+      const authUser = await fbSignInWithGoogle({ role: roleHint });
+      // Guarantee profile creation and fetch
+      const full = await getCurrentUserWithProfile(authUser);
+      setUser(full);
+      // If missing location info, route to onboarding; otherwise dashboard
+      const needsAddress = !full?.state || !full?.city || !full?.zone || !full?.address;
+      return { user: full, redirectTo: needsAddress ? '/onboarding/address' : getDashboardRoute(full.role) };
+    } catch (error) {
+      throw new Error(mapAuthError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getRoleDisplayName = (role) => {
     const roleNames = {
       'citizen': 'Citizen',
@@ -128,6 +146,7 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     signUp,
+  signInWithGoogle,
     updateUser,
     getRoleDisplayName,
     getDashboardRoute

@@ -3,10 +3,12 @@ import {
   signInWithEmailAndPassword,
   signOut as fbSignOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { auth } from './firebase';
-import { createUserProfile, getUserProfile, updateUserProfile } from './firebaseUserService';
+import { createUserProfile, getUserProfile, updateUserProfile, ensureUserDoc } from './firebaseUserService';
 
 export function subscribeToAuth(callback) {
   return onAuthStateChanged(auth, callback);
@@ -32,6 +34,46 @@ export async function signUp(email, password, profileData = {}) {
 export async function signIn(email, password) {
   const cred = await signInWithEmailAndPassword(auth, email, password);
   return cred.user;
+}
+
+// Google OAuth sign-in / sign-up
+export async function signInWithGoogle(extraProfile = {}) {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  try {
+    const cred = await signInWithPopup(auth, provider);
+    let existing = await getUserProfile(cred.user.uid);
+    if (!existing) {
+      const baseProfile = {
+        email: cred.user.email,
+        role: extraProfile.role || 'citizen',
+        displayName: cred.user.displayName || cred.user.email.split('@')[0],
+        photoURL: cred.user.photoURL || null,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        ...extraProfile
+      };
+      await createUserProfile(cred.user.uid, baseProfile);
+      existing = baseProfile;
+    } else if (extraProfile && Object.keys(extraProfile).length) {
+      await updateUserProfile(cred.user.uid, { ...extraProfile, updatedAt: Date.now() });
+      existing = { ...existing, ...extraProfile };
+    }
+    // Final guarantee
+    await ensureUserDoc(cred.user);
+    return cred.user;
+  } catch (err) {
+    console.error('[auth] Google sign-in failed', err);
+    throw err;
+  }
+}
+
+// Raw Google popup that returns the full user credential (used to decide if brand new before profile creation)
+export async function signInWithGoogleRaw() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const cred = await signInWithPopup(auth, provider);
+  return cred; // contains user + _tokenResponse metadata (new user flag)
 }
 
 export async function signOut() {

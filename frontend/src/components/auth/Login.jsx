@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import FloatingParticles from '@/components/ui/FloatingParticles';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { signInWithGoogleRaw } from '@/lib/firebaseAuthService';
 import { Link } from 'react-router-dom';
 
 const Login = () => {
@@ -17,7 +18,7 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -36,6 +37,32 @@ const Login = () => {
       navigate(result.redirectTo, { replace: true });
     } catch (error) {
       alert('Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    try {
+      const cred = await signInWithGoogleRaw();
+      // additionalUserInfo new user flag path (Firebase v9): cred._tokenResponse?.isNewUser OR providerData length
+      const isNew = cred?._tokenResponse?.isNewUser || false;
+      if (isNew) {
+        // Sign out to avoid half-created profile; redirect to register wizard with email prefill
+        // We'll pass email via sessionStorage to avoid leaking in URL if user unshares screen
+        try { sessionStorage.setItem('pendingGoogleEmail', cred.user.email || ''); } catch (_) {}
+        // Ensure sign out so register flow controls profile creation
+        try { await signOut(); } catch (_) {}
+        navigate('/register?google=1', { replace: true });
+      } else {
+        // Existing user -> proceed with normal context-based sign-in to load profile (reuse existing method)
+        const { redirectTo } = await signInWithGoogle();
+        navigate(redirectTo, { replace: true });
+      }
+    } catch (err) {
+      console.error('[Login] Google sign-in error', err);
+      alert('Google sign-in failed: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -83,6 +110,12 @@ const Login = () => {
                   {loading ? 'Signing In...' : (
                     <span className="inline-flex items-center gap-2"><LogIn className="h-4 w-4" /> Sign In</span>
                   )}
+                </Button>
+              </div>
+              <div>
+                <Button type="button" variant="outline" disabled={loading} onClick={handleGoogle} className="w-full rounded-full bg-white text-gray-700 text-sm font-medium h-11 shadow-sm border border-gray-300 hover:border-green-500 hover:text-green-700 transition flex items-center justify-center gap-2">
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                  {loading ? 'Please wait...' : 'Sign in with Google'}
                 </Button>
               </div>
               <div role="alert" aria-live="polite" className="min-h-[18px] text-center text-xs text-red-600"></div>
