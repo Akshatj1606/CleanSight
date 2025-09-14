@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
       }
       try {
         // Ensure Firestore user doc exists (migration from localStorage if needed)
-        const profile = await ensureUserDoc(authUser);
+  const profile = await ensureUserDoc(authUser); // No initial data here; role decided elsewhere during onboarding
         const combined = { uid: authUser.uid, email: authUser.email, ...profile };
         setUser(combined);
       } catch (e) {

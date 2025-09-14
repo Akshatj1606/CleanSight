@@ -267,13 +267,8 @@ const Register = () => {
         } else if ((step === 3 && selectedRole === 'citizen') || (step === 4 && selectedRole !== 'citizen')) {
           // Finalization point: perform Google sign-in now
           const cred = await signInWithGoogleRaw();
-          await ensureUserDoc(cred.user);
-          try {
-            const { updateUserProfile } = await import('@/lib/firebaseUserService');
-            await updateUserProfile(cred.user.uid, { ...userData, email: cred.user.email, role: selectedRole });
-          } catch (e2) {
-            console.warn('Failed to merge supplemental Google user details', e2);
-          }
+          // Create profile atomically with correct role & collected data
+          await ensureUserDoc(cred.user, { ...userData, email: cred.user.email, role: selectedRole });
           try { sessionStorage.removeItem('pendingGoogleEmail'); sessionStorage.removeItem('pendingGoogleRole'); } catch(_) {}
           // user effect will redirect
         }
