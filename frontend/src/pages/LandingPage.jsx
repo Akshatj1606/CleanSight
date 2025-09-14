@@ -1,72 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useAnimation, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { variants, useMotionPref } from '@/lib/motion';
+import Navbar from '@/components/layout/Navbar';
+import BlurText from '@/components/ui/BlurText';
+import CountUp from '@/components/ui/CountUp';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import logoImage from '@/assets/Logo.png';
 import logoImage2 from '@/assets/logo2.png';
+// Partnership logos
+import partner1 from '@/assets/landing carousel/I-1.avif';
+import partner2 from '@/assets/landing carousel/i-2.png';
+import partner3 from '@/assets/landing carousel/i-3.webp';
+import partner4 from '@/assets/landing carousel/i-4.png';
+import partner5 from '@/assets/landing carousel/i-5.jpg';
+import partner6 from '@/assets/landing carousel/i-6.png';
+import partner7 from '@/assets/landing carousel/i-7.webp';
+import partner8 from '@/assets/landing carousel/i-8.png';
+import partner9 from '@/assets/landing carousel/i-9.png';
+import partner10 from '@/assets/landing carousel/i-10.png';
+import partner11 from '@/assets/landing carousel/i-11.svg';
+import AIDetectionWidget from '@/components/ui/AIDetectionWidget';
 import {
-  Camera, MapPin, Trophy, Users, Recycle, Star, ArrowRight, CheckCircle,
-  Globe, Smartphone, Award, TrendingUp, Heart, Shield, Zap, Play,
-  ChevronDown, Sparkles, Target, BarChart3, Leaf, MessageSquare,
-  Calendar, Clock, Verified, Building2, TrendingUp as TrendUp
+  Camera, MapPin, Trophy, Users, Recycle, Star, ArrowRight,
+  Globe, Award, TrendingUp, Shield, Zap, Play,
+  BarChart3, Leaf, Clock, Verified,
+  Droplets, AlertTriangle, Twitter, Instagram, Linkedin, MessageSquare
 } from 'lucide-react';
 
+
 const LandingPageNew = () => {
-  const [activeFeature, setActiveFeature] = useState(0);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  
-  // Auto-cycle testimonials
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonial(prev => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const [showSecond, setShowSecond] = useState(false);
+  const [activeSection, setActiveSection] = useState('home');
+  const sections = useRef(['home','impact','features','products','roadmap','how-it-works','partnerships','testimonials','help']);
 
-  // Auto-cycle features
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveFeature(prev => (prev + 1) % features.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const features = [
-    {
-      icon: Camera,
-      title: "AI-Powered Detection",
-      description: "Advanced computer vision instantly categorizes waste types with 99.2% accuracy",
-      color: "from-blue-500 to-cyan-500",
-      gradient: "bg-gradient-to-br from-blue-50 to-cyan-50",
-      stats: "99.2% accuracy"
-    },
-    {
-      icon: BarChart3,
-      title: "Real-Time Analytics",
-      description: "Live dashboards show community impact and environmental progress metrics",
-      color: "from-green-500 to-emerald-500",
-      gradient: "bg-gradient-to-br from-green-50 to-emerald-50",
-      stats: "Live updates"
-    },
-    {
-      icon: Target,
-      title: "Gamified Engagement",
-      description: "Earn points, unlock achievements, and compete on leaderboards for impact",
-      color: "from-yellow-500 to-orange-500",
-      gradient: "bg-gradient-to-br from-yellow-50 to-orange-50",
-      stats: "50+ rewards"
-    },
-    {
-      icon: Users,
-      title: "Community Network",
-      description: "Connect with eco-warriors and participate in coordinated cleanup initiatives",
-      color: "from-purple-500 to-pink-500",
-      gradient: "bg-gradient-to-br from-purple-50 to-pink-50",
-      stats: "150k+ users"
-    }
-  ];
+  useEffect(()=>{
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if(entry.isIntersecting){
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { threshold: 0.35 }
+    );
+    sections.current.forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) observer.observe(el);
+    });
+    return ()=> observer.disconnect();
+  },[]);
+  // Navbar scroll handled inside Navbar component now
 
   const stats = [
     { 
@@ -129,153 +114,201 @@ const LandingPageNew = () => {
     }
   ];
 
+  const { prefersReduced, maybe } = useMotionPref();
+
   return (
     <div className="min-h-screen bg-white overflow-hidden">
+      <Navbar activeSection={activeSection} />
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-50 via-blue-50 to-indigo-100">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
+  <section id="home" className="relative min-h-screen flex items-center justify-center bg-white border-b border-gray-100">
+    <div className="hero-soft-bg"></div>
+    <div className="noise-layer"></div>
+    <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32 text-center">
           <motion.div
-            animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-20 left-20 w-16 h-16 bg-gradient-to-br from-green-400/20 to-blue-500/20 rounded-full"
-          />
-          <motion.div
-            animate={{ y: [0, 25, 0], x: [0, 10, 0] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute top-40 right-32 w-12 h-12 bg-gradient-to-br from-purple-400/30 to-pink-500/30 rounded-full"
-          />
-          <motion.div
-            animate={{ y: [0, -15, 0], scale: [1, 1.1, 1] }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="absolute bottom-32 left-32 w-20 h-20 bg-gradient-to-br from-yellow-400/15 to-orange-500/15 rounded-full"
-          />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32 text-center z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: "easeOut" }}
+            variants={maybe(variants.fadeInUp())}
+            initial="hidden"
+            animate="show"
           >
-            {/* Premium Badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              <Badge className="mb-6 bg-gradient-to-r from-green-500 to-blue-500 text-white border-0 px-6 py-3 text-sm font-medium shadow-xl">
-                <Sparkles className="w-4 h-4 mr-2" />
-                AI-Powered • Real-Time • Community-Driven
-              </Badge>
-            </motion.div>
+            {/* Headline with BlurText animation */}
+            <div className="mb-8">
+              <div className="mb-6">
+                <a href="#demo" className="relative inline-flex items-center justify-center px-5 py-2.5 rounded-full text-sm font-medium bg-green-600 text-white overflow-hidden shine-btn text-center">
+                  <span className="relative z-10">AI Power Garbage Detection Platform</span>
+                </a>
+              </div>
+              <div className="space-y-3">
+                <BlurText
+                  as="h1"
+                  text="AI-Powered Garbage Detection"
+                  animateBy="words"
+                  delay={110}
+                  direction="top"
+                  className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight tracking-tight"
+                  onAnimationComplete={() => setShowSecond(true)}
+                />
+                {showSecond && (
+                  <div className="flex justify-center">
+                    <BlurText
+                      as="h2"
+                      text="Cleaner, Smarter Cities."
+                      animateBy="words"
+                      delay={140}
+                      direction="top"
+                      className="text-3xl md:text-5xl font-bold text-green-600 leading-tight tracking-tight text-center"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
             
-            {/* Main Headline */}
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="text-6xl md:text-8xl font-black text-gray-900 mb-8 leading-[0.9]"
-            >
-              Transform Cities with{' '}
-              <span className="relative inline-block">
-                <span className="bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Smart Waste
-                </span>
-              </span>
-              <br />
-              <span className="text-gray-700">Management</span>
-            </motion.h1>
-            
-            {/* Enhanced Subtitle */}
+            {/* Subtitle */}
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="text-xl md:text-2xl text-gray-700 mb-12 max-w-4xl mx-auto leading-relaxed"
+              className="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl mx-auto"
             >
-              Join <span className="text-green-600 font-bold">150,000+</span> eco-warriors using AI-powered waste detection, 
-              real-time community impact tracking, and gamified environmental action across <span className="text-blue-600 font-bold">5+ cities</span>.
+              Real-time AI to locate waste hotspots, prioritize cleanup, and reward community action with measurable impact.
             </motion.p>
 
-            {/* CTA Buttons */}
+            {/* CTAs */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.8 }}
-              className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-14"
             >
               <Link to="/register" style={{ textDecoration: 'none' }}>
                 <Button 
                   size="lg" 
-                  className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-12 py-6 text-xl font-bold rounded-2xl shadow-2xl hover:shadow-green-500/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
+                  className="bg-green-600 hover:bg-green-700 text-white px-10 py-5 text-base font-medium rounded-full shadow-sm transition-colors"
                 >
-                  <Smartphone className="h-6 w-6 mr-3" />
-                  Start Your Impact Journey <span role="img" aria-label="spark">✨</span>
-                  <ArrowRight className="h-6 w-6 ml-3" />
+                  Get Started
+                  <ArrowRight className="h-5 w-5 ml-3" />
                 </Button>
               </Link>
-              
               <Button 
                 variant="outline" 
                 size="lg" 
-                className="px-12 py-6 text-xl font-semibold border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 transition-all duration-300 rounded-2xl backdrop-blur-sm bg-white/70"
-                onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+                className="px-10 py-5 text-base font-medium border border-gray-300 hover:border-gray-400 hover:bg-gray-50 rounded-full bg-white transition-colors"
+                onClick={() => { const el=document.getElementById('demo'); if(el) el.scrollIntoView({behavior:'smooth'}); }}
               >
-                <Play className="h-6 w-6 mr-3" />
-                Explore Features
+                {/* <Play className="h-5 w-5 mr-3" /> */}
+                Try Now
               </Button>
             </motion.div>
 
             {/* Trust Indicators */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
+              transition={{ duration: 0.7, delay: 0.9 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-4 max-w-4xl mx-auto flex-wrap"
             >
-              <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/60 backdrop-blur-sm shadow-lg">
-                <Award className="h-8 w-8 text-blue-500" />
-                <span className="text-sm font-semibold text-gray-700">99.2% AI Accuracy</span>
-              </div>
-              <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/60 backdrop-blur-sm shadow-lg">
-                <Globe className="h-8 w-8 text-purple-500" />
-                <span className="text-sm font-semibold text-gray-700">5+ Cities</span>
-              </div>
-              <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/60 backdrop-blur-sm shadow-lg">
-                <Clock className="h-8 w-8 text-orange-500" />
-                <span className="text-sm font-semibold text-gray-700">24/7 AI Assistant Support</span>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          {/* Scroll Indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2 }}
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-          >
-            <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="flex flex-col items-center cursor-pointer text-gray-600"
-              onClick={() => document.getElementById('stats')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              <span className="text-sm mb-2 font-medium">Discover Impact</span>
-              <ChevronDown className="h-6 w-6" />
+              {[{icon:Award,label:'99.2% AI Accuracy'},{icon:Globe,label:'5+ Cities'},{icon:Clock,label:'24/7 AI Assistant Support'}].map((t,i)=>{ const Icon=t.icon; return (
+                <motion.div 
+                  key={i}
+                  className="group inline-flex items-center gap-3 px-4 py-2.5 rounded-full border border-gray-200 bg-white/80 backdrop-blur-sm transition"
+                  variants={variants.hoverCard}
+                  initial="initial"
+                  whileHover="hover"
+                >
+                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-600 text-white text-sm"><Icon className="h-5 w-5" /></span>
+                  <span className="text-xs font-medium text-gray-700 tracking-wide whitespace-nowrap">{t.label}</span>
+                </motion.div>
+              );})}
             </motion.div>
           </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section id="stats" className="py-24 bg-white">
+      {/* Live AI Detection Demo */}
+      <section className="py-24 bg-white" id="demo">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-12 items-start">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Try the Platform</h2>
+              <p className="text-gray-600 text-sm md:text-base mb-6 max-w-md">Upload an image to see how our AI flags waste hotspots. This lightweight demo uses the same /predict endpoint as the core platform.</p>
+              <ul className="space-y-2 text-sm text-gray-600 mb-6">
+                <li>• Accepts common image formats</li>
+                <li>• Returns detection confidence</li>
+                <li>• Shows annotated bounding boxes</li>
+              </ul>
+              <Link to="/register" className="inline-block">
+                <Button className="bg-green-600 hover:bg-green-700 text-white rounded-full px-6 py-2 text-sm font-medium">Create an Account</Button>
+              </Link>
+            </div>
+            <div className="flex justify-center md:justify-end">
+              <AIDetectionWidget />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Impact Snapshot Section */}
+  <section id="impact" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Why CleanSight Matters
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Turning data into cleaner streets, greener air, and empowered communities.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { label: 'Tons of Waste Detected', value: 89000, suffix: '+', sub: 'Captured & Classified', icon: Recycle },
+              { label: 'Communities Engaged', value: 45000, suffix: '+', sub: 'Active participants', icon: Users },
+              { label: 'CO₂ Emissions Reduced', value: 12000, suffix: '+', sub: 'Tons avoided*', icon: Leaf },
+              { label: 'Jobs Created', value: 3200, suffix: '+', sub: 'Ragpicker livelihoods', icon: Award },
+            ].map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={i}
+                  variants={{...maybe(variants.fadeInUp(i)), ...variants.hoverCard}}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, amount: 0.4 }}
+                  whileHover="hover"
+                  className="card-surface"
+                >
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="icon-badge">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-gray-900 leading-none">
+                        <CountUp end={item.value} duration={1.4} />{item.suffix}
+                      </div>
+                      <div className="text-[11px] text-gray-500 tracking-wide mt-1">{item.sub}</div>
+                    </div>
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-800 leading-snug">{item.label}</h3>
+                </motion.div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-6 text-center">*Estimated equivalent based on diversion and lifecycle emission factors.</p>
+        </div>
+      </section>
+
+      {/* Legacy Stats Section (Real Impact) */}
+  <section id="stats" className="py-24 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
@@ -286,33 +319,36 @@ const LandingPageNew = () => {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, index) => {
               const IconComponent = stat.icon;
               return (
                 <motion.div
                   key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: index * 0.1 }}
-                  whileHover={{ y: -5 }}
-                  className="bg-gradient-to-br from-white to-gray-50 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100"
+                  variants={{...maybe(variants.fadeInUp(index)), ...variants.hoverCard}}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, amount: 0.3 }}
+                  whileHover="hover"
+                  className="card-surface"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <IconComponent className="h-10 w-10 text-green-500" />
-                    <Badge variant="outline" className="text-xs font-medium">
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="icon-badge">
+                      <IconComponent className="h-6 w-6" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px] font-medium tracking-wide">
                       {stat.trend}
                     </Badge>
                   </div>
-                  <div className="text-4xl font-black text-gray-900 mb-2">
-                    {stat.number}
+                  <div className="text-3xl font-bold text-gray-900 mb-1 leading-none">
+                    <CountUp end={parseInt(stat.number)} duration={1.2} />
                   </div>
-                  <div className="text-lg font-semibold text-gray-700 mb-1">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-1 leading-snug">
                     {stat.label}
-                  </div>
-                  <div className="text-sm text-gray-500">
+                  </h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">
                     {stat.description}
-                  </div>
+                  </p>
                 </motion.div>
               );
             })}
@@ -320,52 +356,47 @@ const LandingPageNew = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-24 bg-gradient-to-br from-gray-50 to-blue-50">
+  {/* Core Features Section */}
+  <section id="features" className="py-24 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center mb-16"
+            viewport={{ once: true }}
+            className="text-center mb-20"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Powerful Features for Maximum Impact
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Advanced technology meets community action for unprecedented environmental results
-            </p>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Core Features</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">The intelligence, engagement, and speed layers that make CleanSight a next-gen urban sanitation platform.</p>
           </motion.div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {features.map((feature, index) => {
-              const IconComponent = feature.icon;
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: Camera, title: 'AI Garbage Detection', desc: 'Automatic waste identification in images & video streams with category tagging.', badge: 'Real-Time' },
+              { icon: BarChart3, title: 'Smart Reporting', desc: 'Instant structured reports for authorities with geo-tag & severity scoring.', badge: 'Actionable' },
+              { icon: Trophy, title: 'Reward Points (B2C)', desc: 'Earn eco-points redeemable for benefits & recognition.', badge: 'Engagement' },
+              { icon: Award, title: 'CSR Impact Tracking (B2B)', desc: 'Generate auditable CSR metrics & sustainability disclosures.', badge: 'B2B' },
+              { icon: Globe, title: 'Carbon Credits (B2B)', desc: 'Quantified diversion data mapped to potential carbon value.', badge: 'B2B' },
+              { icon: Zap, title: 'Instant Alerts', desc: 'WhatsApp / Telegram style push notifications to cleanup teams.', badge: 'Fast' }
+            ].map((f, i) => {
+              const Icon = f.icon;
               return (
                 <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: index * 0.2 }}
-                  className={`p-8 rounded-3xl ${feature.gradient} border border-white/50 shadow-xl`}
+                  key={i}
+                  variants={{...maybe(variants.fadeInUp(i)), ...variants.hoverCard}}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, amount: 0.35 }}
+                  whileHover="hover"
+                  className="card-surface"
                 >
-                  <div className="flex items-start gap-6">
-                    <div className={`p-4 rounded-2xl bg-gradient-to-br ${feature.color} shadow-lg`}>
-                      <IconComponent className="h-8 w-8 text-white" />
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="icon-badge">
+                      <Icon className="h-6 w-6" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-2xl font-bold text-gray-900">
-                          {feature.title}
-                        </h3>
-                        <Badge className="bg-white/70 text-gray-700">
-                          {feature.stats}
-                        </Badge>
-                      </div>
-                      <p className="text-lg text-gray-700 leading-relaxed">
-                        {feature.description}
-                      </p>
-                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-700 text-[10px] tracking-wide">{f.badge}</Badge>
                   </div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-1 leading-snug">{f.title}</h3>
+                  <p className="text-xs text-gray-600 leading-relaxed">{f.desc}</p>
                 </motion.div>
               );
             })}
@@ -373,49 +404,204 @@ const LandingPageNew = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-24 bg-white">
+  {/* Circular Products Section */}
+  <section id="products" className="py-24 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
+            className="text-center mb-20"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Circular Products</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">Real-world material flows transformed into scalable environmental & economic value streams.</p>
+          </motion.div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              { icon: Recycle, title: 'Plastic Recycling', impact: 'Circular Materials', desc: 'Collected plastics are sorted & routed to recyclers, diverting waste from landfills and lowering virgin material demand.' },
+              { icon: Leaf, title: 'Compost & Manure', impact: 'Soil Health', desc: 'Organic waste converted to nutrient-rich compost boosting soil fertility & reducing methane from decomposition.' },
+              { icon: Droplets, title: 'Bio-Fertilizer', impact: 'Regenerative Input', desc: 'Biologically derived fertilizer supporting sustainable agriculture with lower synthetic chemical dependence.' }
+            ].map((p,i)=> { const Icon = p.icon; return (
+              <motion.div key={i}
+                variants={{...maybe(variants.fadeInUp(i)), ...variants.hoverCard}}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.35 }}
+                whileHover="hover"
+                className="card-surface"
+              >
+                <div className="flex items-start justify-between mb-5">
+                  <div className="icon-badge"><Icon className="h-6 w-6" /></div>
+                  <Badge className="bg-emerald-100 text-emerald-700 text-[10px] tracking-wide">{p.impact}</Badge>
+                </div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1 leading-snug">{p.title}</h3>
+                <p className="text-xs text-gray-600 leading-relaxed">{p.desc}</p>
+              </motion.div>
+            );})}
+          </div>
+          <div className="text-center mt-10 text-xs text-gray-400">Lifecycle tracing & impact accounting coming soon.</div>
+        </div>
+      </section>
+
+  {/* Future-Ready Add-Ons / Roadmap */}
+  <section className="py-24 bg-white border-t border-gray-100" id="roadmap">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-16"
+          >
+            <div>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Future-Ready Add-Ons</h2>
+              <p className="text-lg text-gray-600 max-w-2xl">Innovation pipeline enabling proactive infrastructure maintenance and data-driven sanitation intelligence.</p>
+            </div>
+            <Badge className="bg-green-600 text-white px-4 py-2 rounded-md">Roadmap 2025</Badge>
+          </motion.div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: MapPin, title: 'Pothole Detection', desc: 'Computer vision spotting road hazards early.', stage: 'Beta' },
+              { icon: Droplets, title: 'Sewer Overflow Alerts', desc: 'Detect surges & blockages before flooding.', stage: 'Research' },
+              { icon: Shield, title: 'IoT Smart Bin Integration', desc: 'Bin fill-level telemetry + predictive routing.', stage: 'Design' },
+              { icon: TrendingUp, title: 'Predictive Waste Analytics', desc: 'Forecast hotspots & optimize resource allocation.', stage: 'Alpha' },
+              { icon: AlertTriangle, title: 'Illegal Dumping Detection', desc: 'Real-time anomaly detection for dumping.', stage: 'Planned' },
+            ].map((r, i) => {
+              const Icon = r.icon || Camera;
+              return (
+                <motion.div
+                  key={i}
+                  variants={{...maybe(variants.fadeInUp(i)), ...variants.hoverCard}}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, amount: 0.4 }}
+                  whileHover="hover"
+                  className="card-surface"
+                >
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="icon-badge">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-700 text-[10px] tracking-wide">{r.stage}</Badge>
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-1 leading-snug">{r.title}</h3>
+                  <p className="text-xs text-gray-600 leading-relaxed mb-3">{r.desc}</p>
+                  <div className="text-[10px] uppercase tracking-wide text-gray-400">Scalable module</div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+  <section id="how-it-works" className="py-24 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} transition={{duration:0.8}} viewport={{ once: true }} className="text-center mb-20">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">How It Works</h2>
+            <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">From detection to rewarding verified environmental action.</p>
+          </motion.div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              { step: 'Detect', icon: Camera, desc: 'Cameras, drones & citizen uploads feed AI that classifies and geo-tags waste hotspots.' },
+              { step: 'Report', icon: BarChart3, desc: 'Dashboards auto-generate structured cleanup tasks with severity & material metadata.' },
+              { step: 'Act & Reward', icon: Trophy, desc: 'Teams complete cleanups, evidence is verified, eco-points + leaderboards update instantly.' }
+            ].map((s,i)=>{ const Icon = s.icon; return (
+              <motion.div key={i}
+                variants={{...maybe(variants.fadeInUp(i)), ...variants.hoverCard}}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.35 }}
+                whileHover="hover"
+                className="card-surface">
+                <div className="flex items-start justify-between mb-5">
+                  <div className="icon-badge"><Icon className="h-6 w-6" /></div>
+                  <div className="text-xs font-medium tracking-wide text-gray-500">Step {i+1}</div>
+                </div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 leading-snug">{s.step}</h3>
+                <p className="text-xs text-gray-600 leading-relaxed">{s.desc}</p>
+              </motion.div>
+            );})}
+          </div>
+        </div>
+      </section>
+
+      {/* Community & Partnerships */}
+  <section id="partnerships" className="py-24 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} transition={{duration:0.8}} viewport={{ once: true }} className="grid md:grid-cols-3 gap-6 mb-14">
+            <div className="md:col-span-2 card-surface">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Community & Partnerships</h2>
+              <p className="text-sm md:text-base text-gray-600 leading-relaxed">We collaborate with municipalities, NGOs, residential societies and circular economy stakeholders to accelerate climate-positive sanitation outcomes.</p>
+            </div>
+            <div className="card-surface">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Why Partner?</h3>
+              <p className="text-xs text-gray-600 leading-relaxed">Unlock impact-based revenue streams, workforce empowerment & ESG-grade reporting with verifiable waste intelligence.</p>
+            </div>
+          </motion.div>
+          <div className="partner-marquee mt-2">
+            <div className="partner-track">
+              {[
+                partner1, partner2, partner3, partner4, partner5, partner6, partner7, partner8, partner9, partner10, partner11
+              ].concat([
+                partner1, partner2, partner3, partner4, partner5, partner6, partner7, partner8, partner9, partner10, partner11
+              ]).map((src, i) => (
+                <div key={i} className="partner-item flex items-center justify-center">
+                  <img 
+                    src={src} 
+                    alt="Partner logo" 
+                    loading="lazy" 
+                    decoding="async" 
+                    className="max-h-10 w-auto object-contain opacity-80 hover:opacity-100 transition duration-300"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-6 text-center">Logos shown are samples / placeholders for prospective or ecosystem partners.</p>
+        </div>
+      </section>
+
+      {/* User Stories / Testimonials */}
+  <section className="py-24 bg-white border-t border-gray-100" id="testimonials">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Trusted by Leaders Worldwide
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              See what environmental scientists, city planners, and community leaders say about CleanSight
-            </p>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">User Stories & Testimonials</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">From city officials to citizen volunteers – real voices behind measurable change.</p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((t, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: index * 0.2 }}
-                className="bg-gradient-to-br from-white to-gray-50 p-8 rounded-2xl shadow-xl border border-gray-100"
+                variants={{...maybe(variants.fadeInUp(index)), ...variants.hoverCard}}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.35 }}
+                whileHover="hover"
+                className="card-surface"
               >
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="text-4xl">{testimonial.avatar}</div>
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="text-3xl leading-none">{t.avatar}</div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-gray-900">{testimonial.name}</h4>
-                      {testimonial.verified && <Verified className="h-4 w-4 text-blue-500" />}
+                    <div className="flex items-center gap-1 mb-1">
+                      <h4 className="text-sm font-semibold text-gray-900">{t.name}</h4>
+                      {t.verified && <Verified className="h-3.5 w-3.5 text-blue-500" />}
                     </div>
-                    <p className="text-sm text-gray-600">{testimonial.role}</p>
-                    <p className="text-xs text-gray-500">{testimonial.company}</p>
+                    <p className="text-xs text-gray-600 leading-tight">{t.role}</p>
+                    <p className="text-[10px] text-gray-500">{t.company}</p>
                   </div>
                 </div>
-                <p className="text-gray-700 leading-relaxed mb-4 italic">
-                  "{testimonial.content}"
-                </p>
-                <div className="flex gap-1">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 text-yellow-400 fill-current" />
+                <p className="text-xs text-gray-700 leading-relaxed mb-3 italic">"{t.content}"</p>
+                <div className="flex gap-0.5">
+                  {[...Array(t.rating)].map((_, i) => (
+                    <Star key={i} className="h-3.5 w-3.5 text-yellow-400 fill-current" />
                   ))}
                 </div>
               </motion.div>
@@ -424,45 +610,110 @@ const LandingPageNew = () => {
         </div>
       </section>
 
+      {/* CTA Banner (Refactored Minimal) */}
+      <section className="py-24 bg-white border-t border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="card-surface text-center max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">Be Part of the Clean Revolution</h2>
+            <p className="text-sm md:text-base text-gray-600 mb-8 leading-relaxed">Join a growing network turning real-time waste intelligence into measurable climate and social impact. Fast onboarding. Immediate visibility. Verifiable results.</p>
+            <Link to="/register">
+              <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white font-medium px-8 py-4 rounded-full text-sm md:text-base">Get Started</Button>
+            </Link>
+            <div className="mt-6 text-[10px] uppercase tracking-wide text-gray-400">Impact-first • Data-driven • Scalable</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Help & Support / FAQs */}
+  <section id="help" className="py-24 bg-white border-t border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} transition={{duration:0.7}} viewport={{ once: true }} className="text-center mb-14">
+            <h2 className="text-4xl font-bold text-gray-900 mb-6">Help & Support</h2>
+            <p className="text-lg text-gray-600">Quick answers to common questions.</p>
+          </motion.div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {[
+              { q: 'How do I report garbage?', a: 'Upload a photo – AI auto-detects type & location.' },
+              { q: 'How are rewards distributed?', a: 'Eco-points per validated report; redeem in rewards.' },
+              { q: 'Can officials access analytics?', a: 'Yes, partners receive real-time dashboards.' },
+              { q: 'Is my data secure?', a: 'Submissions anonymized; encrypted storage.' },
+              { q: 'Do you support WhatsApp alerts?', a: 'Opt-in for instant cleanup task notifications.' },
+              { q: 'How can I become a partner?', a: 'Email partnerships@cleansight.ai or use the form.' }
+            ].map((f,i)=>(
+              <motion.div key={i} initial={{opacity:0,y:18}} whileInView={{opacity:1,y:0}} transition={{duration:0.45, delay:i*0.05}} viewport={{ once: true }} whileHover={{y:-3}} className="card-surface">
+                <div className="flex items-start gap-4">
+                  <div className="icon-badge shrink-0"><MessageSquare className="h-5 w-5" /></div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1 leading-snug">{f.q}</h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">{f.a}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          <div className="text-center mt-10 text-sm text-gray-500">Need more? Visit the <Link to="/help" className="text-green-600 hover:underline">Help Center</Link>.</div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="bg-gradient-to-br from-gray-900 to-black text-white py-16">
+  <footer className="bg-black text-white py-20 border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-            <div className="col-span-1 md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-12 mb-16">
+            <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-6">
-                <img src={logoImage2} alt="CleanSight" className="w-44 w-10 object-contain" />
+                <img src={logoImage2} alt="CleanSight" className="w-40 object-contain" />
               </div>
-              <p className="text-gray-400 text-lg leading-relaxed max-w-md">
-                Transforming waste management through AI-powered detection, 
-                community engagement, and real-time impact tracking.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-lg mb-4">Platform</h4>
-              <div className="space-y-3 text-gray-400">
-                <Link to="/register" className="block hover:text-white transition-colors">Get Started</Link>
-                <Link to="/help" className="block hover:text-white transition-colors">Help Center</Link>
-                <a href="#features" className="block hover:text-white transition-colors">Features</a>
-                <a href="#stats" className="block hover:text-white transition-colors">Impact</a>
+              <p className="text-gray-400 leading-relaxed mb-6 max-w-sm">AI-driven urban sanitation intelligence platform enabling cleaner streets, reduced emissions and inclusive green jobs.</p>
+              <div className="flex items-center gap-4 text-gray-400">
+                <a href="#" aria-label="Twitter" className="hover:text-green-500 transition"><Twitter className="h-5 w-5" /></a>
+                <a href="#" aria-label="LinkedIn" className="hover:text-green-500 transition"><Linkedin className="h-5 w-5" /></a>
+                <a href="#" aria-label="Instagram" className="hover:text-green-500 transition"><Instagram className="h-5 w-5" /></a>
               </div>
             </div>
-
             <div>
-              <h4 className="font-bold text-lg mb-4">Connect</h4>
-              <div className="space-y-3 text-gray-400">
-                <a href="#" className="block hover:text-white transition-colors">Community</a>
-                <a href="#" className="block hover:text-white transition-colors">Blog</a>
-                <a href="#" className="block hover:text-white transition-colors">Support</a>
-                <a href="#" className="block hover:text-white transition-colors">Contact</a>
-              </div>
+              <h4 className="font-semibold mb-4 text-sm tracking-wide text-gray-200">Product</h4>
+              <ul className="space-y-3 text-gray-400 text-sm">
+                <li><a href="#features" className="hover:text-white transition">Features</a></li>
+                <li><a href="#impact" className="hover:text-white transition">Impact</a></li>
+                <li><a href="#roadmap" className="hover:text-white transition">Roadmap</a></li>
+                <li><a href="#how-it-works" className="hover:text-white transition">How It Works</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-sm tracking-wide text-gray-200">Company</h4>
+              <ul className="space-y-3 text-gray-400 text-sm">
+                <li><a href="#partnerships" className="hover:text-white transition">Partnerships</a></li>
+                <li><Link to="/help" className="hover:text-white transition">Help Center</Link></li>
+                <li><a href="#testimonials" className="hover:text-white transition">Testimonials</a></li>
+                <li><a href="#" className="hover:text-white transition">Careers</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-sm tracking-wide text-gray-200">Legal</h4>
+              <ul className="space-y-3 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-white transition">Terms of Use</a></li>
+                <li><a href="#" className="hover:text-white transition">Data Policy</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-sm tracking-wide text-gray-200">Stay Updated</h4>
+              <p className="text-gray-400 text-sm mb-4">Monthly insights & roadmap drops. No spam.</p>
+              <form onSubmit={(e)=>{e.preventDefault();}} className="space-y-3">
+                <div className="flex items-center bg-white/10 rounded-full p-1">
+                  <input type="email" required placeholder="Email address" className="flex-1 bg-transparent px-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none" />
+                  <Button type="submit" size="sm" className="rounded-full bg-green-600 hover:bg-green-700 text-white px-5">Join</Button>
+                </div>
+              </form>
             </div>
           </div>
-
-          <div className="border-t border-gray-800 pt-8 text-center">
-            <p className="text-gray-400">
-              &copy; 2025 CleanSight. Transforming cities, one report at a time.
-            </p>
+          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6 text-sm text-gray-500">
+            <p>&copy; 2025 CleanSight. Transforming cities, one report at a time.</p>
+            <div className="flex gap-6">
+              <a href="#" className="hover:text-white transition">Privacy</a>
+              <a href="#" className="hover:text-white transition">Terms</a>
+              <a href="#" className="hover:text-white transition">Contact</a>
+            </div>
           </div>
         </div>
       </footer>

@@ -60,6 +60,10 @@ body {
   @apply bg-background text-foreground;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* Custom utility classes */
 .shadow-card {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -127,4 +131,127 @@ body {
 .bg-grid-pattern {
   background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.15) 1px, transparent 1px);
   background-size: 20px 20px;
+}
+
+/* Modern card surface utilities */
+.card-surface {
+  @apply relative bg-white border border-gray-200 rounded-xl p-6 transition-colors duration-200;
+}
+.card-surface:hover {
+  @apply border-gray-300;
+}
+.card-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 20%, rgba(16,185,129,0.08), transparent 60%);
+  opacity: 0;
+  transition: opacity .3s ease;
+  pointer-events: none;
+}
+.card-surface:hover::before {
+  opacity: 1;
+}
+.icon-badge {
+  @apply inline-flex items-center justify-center rounded-md bg-green-600 text-white shadow-sm;
+  width: 44px;
+  height: 44px;
+  font-size: 1.25rem;
+}
+.icon-badge--subtle {
+  @apply bg-green-50 text-green-700 border border-green-100;
+}
+.card-meta {
+  @apply text-xs uppercase tracking-wide text-gray-500 font-medium;
+}
+
+/* Partner carousel marquee */
+.partner-marquee {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+.partner-track {
+  display: flex;
+  width: max-content;
+  animation: scroll-left 32s linear infinite;
+}
+.partner-item {
+  @apply flex items-center justify-center h-16 px-10 mx-2 rounded-lg bg-white border border-gray-200 text-gray-600;
+  min-width: 160px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  transition: color .3s ease, border-color .3s ease;
+}
+.partner-item:hover { @apply text-green-600 border-green-300; }
+
+/* Pause marquee on hover */
+.partner-marquee:hover .partner-track { animation-play-state: paused; }
+
+/* Hover lift utility */
+.hover-lift {
+  transition: transform .35s cubic-bezier(.16,.84,.44,1), box-shadow .35s ease, border-color .35s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+/* Subtle hero background layer */
+.hero-soft-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(16,185,129,0.12), transparent 60%),
+    radial-gradient(circle at 80% 70%, rgba(16,185,129,0.08), transparent 65%);
+  pointer-events: none;
+  mask: linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,.9));
+}
+
+/* Light noise overlay (optional subtle texture) */
+.noise-layer { position:absolute; inset:0; pointer-events:none; mix-blend-mode:overlay; opacity:.08; }
+.noise-layer::after { content:""; position:absolute; inset:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Crect fill='%23ffffff' opacity='0.05' width='1' height='1'/%3E%3C/svg%3E"); background-size:160px 160px; }
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .partner-track { animation: none !important; }
+  .shine-btn::before { animation: none; }
+}
+
+@keyframes scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Shine button effect */
+.shine-btn {
+  position: relative;
+  isolation: isolate;
+  transition: background-color 0.3s ease;
+}
+
+.shine-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 120%;
+  height: 100%;
+  background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.4) 45%, rgba(255,255,255,0.65) 50%, rgba(255,255,255,0.4) 55%, transparent 100%);
+  transform: skewX(-20deg);
+  animation: shine-sweep 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes shine-sweep {
+  0% { left: -150%; }
+  60% { left: 130%; }
+  100% { left: 130%; }
+}
+
+.shine-btn:hover {
+  background-color: #059669; /* slightly darker green */
 }

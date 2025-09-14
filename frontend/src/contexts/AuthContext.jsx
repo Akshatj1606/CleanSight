@@ -1,4 +1,15 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { 
+  subscribeToAuth,
+  signIn as fbSignIn,
+  signUp as fbSignUp,
+  signOut as fbSignOut,
+  getCurrentUserWithProfile,
+  updateProfileData,
+  mapAuthError
+} from '@/lib/firebaseAuthService';
+import { ensureUserDoc } from '@/lib/firebaseUserService';
+// Fallback legacy local storage (migration)
 import { userService, initializeSampleData } from '../lib/localDatabase.js';
 
 const AuthContext = createContext({});
@@ -17,68 +28,50 @@ export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
-    // Initialize sample data on first load
+    // Keep legacy sample data init for offline demo fallback
     initializeSampleData();
-    
-    // Check for existing user in localStorage
-    const initializeAuth = async () => {
+
+    // Subscribe to Firebase auth state
+    const unsubscribe = subscribeToAuth(async (authUser) => {
+      if (!authUser) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
       try {
-        const currentUser = await userService.getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Error initializing auth:', error);
+        // Ensure Firestore user doc exists (migration from localStorage if needed)
+        const profile = await ensureUserDoc(authUser);
+        const combined = { uid: authUser.uid, email: authUser.email, ...profile };
+        setUser(combined);
+      } catch (e) {
+        console.error('Error loading user profile', e);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    initializeAuth();
-
-    // Listen for localStorage changes (for cross-tab sync)
-    const handleStorageChange = (event) => {
-      if (event.key === 'cleansight_auth_user' && event.newValue) {
-        try {
-          const updatedUser = JSON.parse(event.newValue);
-          console.log('AuthContext: User updated from storage change', updatedUser);
-          setUser(updatedUser);
-        } catch (error) {
-          console.error('Error parsing updated user from storage:', error);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return () => unsubscribe();
   }, []);
 
   const signIn = async (email, password) => {
     setLoading(true);
     try {
-      const data = await userService.signIn(email, password);
-      const currentUser = await userService.getCurrentUser();
-      setUser(currentUser);
-      setLoading(false);
-      
-      // Return success and let the Login component handle navigation
-      return { 
-        user: currentUser, 
-        redirectTo: getDashboardRoute(currentUser.role)
-      };
+      const authUser = await fbSignIn(email, password);
+      const full = await getCurrentUserWithProfile(authUser);
+      setUser(full);
+      return { user: full, redirectTo: getDashboardRoute(full.role) };
     } catch (error) {
+      throw new Error(mapAuthError(error));
+    } finally {
       setLoading(false);
-      throw error;
     }
   };
 
   const signOut = async () => {
     try {
-      await userService.signOut();
+      await fbSignOut();
       setUser(null);
       setSession(null);
-      // Use window.location.replace to prevent going back to authenticated pages
       window.location.replace('/');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -88,18 +81,14 @@ export const AuthProvider = ({ children }) => {
   const signUp = async (email, password, userData) => {
     setLoading(true);
     try {
-      const data = await userService.signUp(email, password, userData);
-      setUser(data.user);
-      setLoading(false);
-      
-      // Return success and let the Register component handle navigation
-      return { 
-        user: data.user, 
-        redirectTo: getDashboardRoute(userData.role)
-      };
+      const authUser = await fbSignUp(email, password, userData);
+      const profile = await getCurrentUserWithProfile(authUser);
+      setUser(profile);
+      return { user: profile, redirectTo: getDashboardRoute(profile.role) };
     } catch (error) {
+      throw new Error(mapAuthError(error));
+    } finally {
       setLoading(false);
-      throw error;
     }
   };
 
@@ -123,30 +112,17 @@ export const AuthProvider = ({ children }) => {
     return routes[role] || '/dashboard';
   };
 
-  const updateUser = (updatedUserData) => {
-    console.log('AuthContext: Updating user data', updatedUserData);
-    
-    // Get current user data and merge with updates
-    const currentUser = user || {};
-    const mergedUserData = { ...currentUser, ...updatedUserData };
-    
-    console.log('AuthContext: Merged user data', mergedUserData);
-    
-    // Update the user state immediately to trigger re-renders
-    setUser(mergedUserData);
-    
-    // Also update localStorage to keep it in sync
-    localStorage.setItem('cleansight_auth_user', JSON.stringify(mergedUserData));
-    
-    console.log('AuthContext: User data updated successfully');
-    
-    // Return the updated user data
-    return mergedUserData;
+  const updateUser = async (updatedUserData) => {
+    if (!user?.uid) return null;
+    await updateProfileData(user.uid, updatedUserData);
+    const refreshed = { ...user, ...updatedUserData, updatedAt: Date.now() };
+    setUser(refreshed);
+    return refreshed;
   };
 
   const value = {
     user,
-    session: null, // localStorage doesn't use sessions
+  session: null,
     userRole: user?.role || null,
     loading,
     signIn,
