@@ -1,30 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Trophy, 
+import {
+  Trophy,
   Award,
   TrendingUp,
   Recycle,
   Camera,
   MapPin,
   Star,
-  Zap,
   Calendar,
-  Target,
   Medal,
-  Crown,
   MessageCircle,
   Heart,
   ClipboardList,
   Loader,
   Share2,
   Users,
-  Gift,
-  Home
+  Gift
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { reportService, leaderboardService, taskService } from '@/lib/localDatabase.js';
 import LocationDisplay from '@/components/ui/LocationDisplay';
 import ProfilePicture from '@/components/ui/ProfilePicture';
+import StatCard from '@/components/ui/StatCard';
+import { motion } from 'framer-motion';
 
 // Dashboard Component
 const Dashboard = () => {
@@ -170,8 +168,9 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-500"></div>
+      <div className="flex items-center justify-center h-72">
+        <Loader className="h-8 w-8 animate-spin text-green-500" />
+        <span className="sr-only">Loading dashboard data</span>
       </div>
     );
   }
@@ -179,291 +178,302 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2">Welcome back, {user.full_name || 'User'}!</h1>
-            <p className="opacity-90 text-lg mb-3">Here's your environmental impact dashboard</p>
-            <LocationDisplay 
-              user={user} 
-              className="opacity-90" 
-            />
-          </div>
-          <div className="flex-shrink-0 ml-6">
-            <ProfilePicture 
-              src={user.profileImage} 
-              alt={user.full_name || 'User'} 
-              size="2xl"
-              className="border-4 border-white/20"
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="card-surface overflow-hidden"
+      >
+        <div className="relative">
+          <div className="absolute inset-0 opacity-[0.08] pointer-events-none bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.4),transparent_60%)]" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative">
+            <div className="flex-1 pt-1">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 text-gray-900">Welcome back, {user.full_name || 'User'}!</h1>
+              <p className="text-gray-600 mb-3">Here's your environmental impact dashboard</p>
+              <LocationDisplay
+                user={user}
+                className="text-sm text-gray-500"
+              />
+            </div>
+            <ProfilePicture
+              src={user.profileImage}
+              alt={user.full_name || 'User'}
+              size="xl"
+              className="ring-2 ring-green-100"
             />
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <Trophy className="h-10 w-10 text-yellow-500" />
-            <span className="text-3xl font-bold text-yellow-600">{userStats.total_points || 0}</span>
-          </div>
-          <p className="text-gray-600 text-sm font-medium mb-1">Total Points</p>
-          <div className="flex items-center text-xs text-green-600">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            +{userStats.total_points || 0} this week
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <Award className="h-10 w-10 text-blue-500" />
-            <span className="text-3xl font-bold text-blue-600">#1</span>
-          </div>
-          <p className="text-gray-600 text-sm font-medium mb-1">Global Rank</p>
-          <div className="flex items-center text-xs text-green-600">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            ↑5 positions
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <Camera className="h-10 w-10 text-green-500" />
-            <span className="text-3xl font-bold text-green-600">{userStats.total_activities || 0}</span>
-          </div>
-          <p className="text-gray-600 text-sm font-medium mb-1">Reports Submitted</p>
-          <p className="text-xs text-gray-500">{userStats.total_activities || 0} verified</p>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <Recycle className="h-10 w-10 text-emerald-500" />
-            <span className="text-3xl font-bold text-emerald-600">{userStats.total_weight || 0}kg</span>
-          </div>
-          <p className="text-gray-600 text-sm font-medium mb-1">Total Waste Collected</p>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(userStats.total_weight || 0, 100)}%` }}></div>
-          </div>
-        </div>
+        <StatCard
+          icon={<Trophy className="h-6 w-6" />}
+          label="Total Points"
+          value={userStats.total_points || 0}
+          meta={`+${userStats.total_points || 0} this week`}
+          accent="green"
+          trend={{ value: 'This week', direction: 'up', sr: 'Points gained this week' }}
+        />
+        <StatCard
+          icon={<Award className="h-6 w-6" />}
+          label="Global Rank"
+          value="#1"
+          meta="↑5 positions"
+          accent="green"
+          trend={{ value: '+5', direction: 'up', sr: 'Rank improved by five' }}
+        />
+        <StatCard
+          icon={<Camera className="h-6 w-6" />}
+          label="Reports Submitted"
+          value={userStats.total_activities || 0}
+          meta={`${userStats.total_activities || 0} verified`}
+          accent="green"
+        />
+        <StatCard
+          icon={<Recycle className="h-6 w-6" />}
+          label="Total Waste Collected"
+          value={`${userStats.total_weight || 0}kg`}
+          meta="Progress toward goal"
+          accent="green"
+        />
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Reports */}
-        <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm border">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.05 }}
+          className="lg:col-span-2 card-surface"
+        >
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <MapPin className="h-6 w-6 text-green-500" />
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+              <MapPin className="h-5 w-5 text-green-600" />
               Recent Reports
-            </h3>
-            <button className="text-green-600 hover:text-green-700 font-medium text-sm">
+            </h2>
+            <button className="text-green-600 hover:text-green-700 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-md px-2 py-1">
               View All
             </button>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {recentReports.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">No recent reports found.</div>
+              <div className="text-center text-gray-400 py-8 text-sm">No recent reports found.</div>
             ) : (
-              recentReports.map((report) => (
-                <div key={report.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <Camera className="h-5 w-5 text-green-600" />
+              recentReports.map((report) => {
+                const status = report.status || 'Pending';
+                const statusStyles =
+                  /completed/i.test(status) ? 'bg-green-50 text-green-700 border border-green-100' :
+                  /progress/i.test(status) ? 'bg-yellow-50 text-yellow-700 border border-yellow-100' :
+                  'bg-gray-50 text-gray-600 border border-gray-100';
+                return (
+                  <div key={report.id} className="p-4 rounded-lg border hover-lift bg-white/50 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center shrink-0">
+                        <Camera className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm text-gray-900 truncate">{report.location || report.address || 'Unknown Location'}</p>
+                        <p className="text-xs text-gray-500 truncate">{(report.type || report.category || 'N/A')} • {report.date ? report.date : (report.created_at ? new Date(report.created_at).toLocaleDateString() : '')}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{report.location || report.address || 'Unknown Location'}</p>
-                      <p className="text-sm text-gray-500">{report.type || report.category || 'N/A'} • {report.date ? report.date : (report.created_at ? new Date(report.created_at).toLocaleDateString() : '')}</p>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${statusStyles}`}>{status}</span>
+                      <span className="text-xs font-medium">
+                        {/completed/i.test(status) ? (
+                          <span className="text-green-600">+50 pts</span>
+                        ) : (
+                          <span className="text-gray-400">Pending</span>
+                        )}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      report.status === "Completed" || report.status === "completed" ? "bg-green-100 text-green-700" :
-                      report.status === "In Progress" || report.status === "in_progress" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-gray-100 text-gray-700"
-                    }`}>
-                      {report.status || 'Pending'}
-                    </span>
-                    <span className="text-sm font-bold">
-                      {report.status === 'completed' || report.status === 'Completed' ? (
-                        <span className="text-green-600">+50 pts</span>
-                      ) : (
-                        <span className="text-gray-500">Pending</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Task Status */}
-        <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm border">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="lg:col-span-2 card-surface"
+        >
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <ClipboardList className="h-6 w-6 text-blue-500" />
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+              <ClipboardList className="h-5 w-5 text-green-600" />
               Task Status
-            </h3>
-            <button 
+            </h2>
+            <button
               onClick={handleRefresh}
               disabled={loading}
-              className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1 disabled:opacity-50"
+              className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-md px-2 py-1 disabled:opacity-50"
             >
               {loading ? <Loader className="h-4 w-4 animate-spin" /> : 'Refresh'}
             </button>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {recentTasks.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">No tasks assigned yet.</div>
+              <div className="text-center text-gray-400 py-8 text-sm">No tasks assigned yet.</div>
             ) : (
-              recentTasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <ClipboardList className="h-5 w-5 text-blue-600" />
+              recentTasks.map((task) => {
+                const status = task.status;
+                const statusStyles =
+                  status === 'completed' ? 'bg-green-50 text-green-700 border border-green-100' :
+                  status === 'in_progress' ? 'bg-green-50/60 text-green-600 border border-green-100' :
+                  'bg-green-50/40 text-green-600 border border-green-100/60';
+                return (
+                  <div key={task.id} className="p-4 rounded-lg border hover-lift bg-white/50 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                        <ClipboardList className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm text-gray-900 truncate">{task.type === 'collection' ? 'Waste Collection' : 'Cleanup Task'}</p>
+                        <p className="text-xs text-gray-500 truncate">{task.report?.location || 'Location not specified'} • {task.assigned_at ? `Assigned ${new Date(task.assigned_at).toLocaleDateString()}` : 'Recently assigned'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        {task.type === 'collection' ? 'Waste Collection' : 'Cleanup Task'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {task.report?.location || 'Location not specified'} • 
-                        {task.assigned_at ? ` Assigned ${new Date(task.assigned_at).toLocaleDateString()}` : ' Recently assigned'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      task.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      task.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
-                      {task.status === 'assigned' ? 'Assigned' : 
-                       task.status === 'in_progress' ? 'In Progress' : 
-                       task.status === 'completed' ? 'Completed' : 'Pending'}
-                    </span>
-                    {task.ragpicker_id && (
-                      <span className="text-xs text-gray-500">
-                        Assigned to Kiosk Operator #{task.ragpicker_id}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${statusStyles}`}>
+                        {status === 'assigned' ? 'Assigned' : status === 'in_progress' ? 'In Progress' : status === 'completed' ? 'Completed' : 'Pending'}
                       </span>
-                    )}
+                      {task.ragpicker_id && (
+                        <span className="text-[11px] text-gray-400">Operator #{task.ragpicker_id}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Quick Actions */}
         <div className="space-y-6">
           {/* Weekly Activity */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-blue-500" />
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="card-surface"
+          >
+            <h2 className="text-sm font-semibold tracking-wide text-gray-700 mb-4 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-green-600" />
               Weekly Activity
-            </h3>
-            <div className="flex items-end justify-between h-20">
+            </h2>
+            <div className="flex items-end justify-between h-24">
               {weeklyStats.map((stat, index) => (
-                <div key={index} className="flex flex-col items-center">
-                  <div 
-                    className="w-6 bg-blue-500 rounded-t mb-2 transition-all duration-300"
-                    style={{ height: `${(stat.reports / Math.max(...weeklyStats.map(s => s.reports))) * 60}px` }}
-                  ></div>
-                  <span className="text-xs text-gray-500">{stat.day}</span>
+                <div key={index} className="flex flex-col items-center w-full">
+                  <div
+                    className="w-6 rounded-t-lg bg-gradient-to-t from-green-600 to-green-400/60 transition-all duration-500"
+                    style={{ height: `${(stat.reports / Math.max(...weeklyStats.map(s => s.reports))) * 72}px` }}
+                  />
+                  <span className="text-[11px] text-gray-500 mt-1">{stat.day}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Achievements */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <Star className="h-5 w-5 text-yellow-500" />
+            <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="card-surface"
+          >
+            <h2 className="text-sm font-semibold tracking-wide text-gray-700 mb-4 flex items-center gap-2">
+              <Star className="h-4 w-4 text-green-600" />
               Recent Achievements
-            </h3>
+            </h2>
             <div className="space-y-3">
               {achievements.slice(0, 3).map((achievement, index) => (
-                <div key={index} className={`flex items-center gap-3 p-3 rounded-lg ${
-                  achievement.earned ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'
+                <div key={index} className={`flex items-center gap-3 p-3 rounded-lg border hover-lift ${
+                  achievement.earned ? 'bg-green-50/70 border-green-100' : 'bg-gray-50/60 border-gray-100'
                 }`}>
-                  <span className="text-2xl">{achievement.icon}</span>
-                  <div className="flex-1">
-                    <p className={`font-medium text-sm ${achievement.earned ? 'text-yellow-800' : 'text-gray-500'}`}>
-                      {achievement.title}
-                    </p>
-                    <p className={`text-xs ${achievement.earned ? 'text-yellow-600' : 'text-gray-400'}`}>
-                      {achievement.description}
-                    </p>
+                  <span className="text-xl" aria-hidden="true">{achievement.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-medium text-sm truncate ${achievement.earned ? 'text-green-800' : 'text-gray-600'}`}>{achievement.title}</p>
+                    <p className={`text-xs ${achievement.earned ? 'text-green-600' : 'text-gray-400'}`}>{achievement.description}</p>
                   </div>
-                  {achievement.earned && <Medal className="h-4 w-4 text-yellow-500" />}
+                  {achievement.earned && <Medal className="h-4 w-4 text-green-600" aria-label="Earned" />}
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Community Feed */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="card-surface"
+      >
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6 text-teal-500" />
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+            <Users className="h-5 w-5 text-green-600" />
             Community Highlights
-          </h3>
-          <button className="text-teal-600 hover:text-teal-700 font-medium text-sm">
+          </h2>
+          <button className="text-green-600 hover:text-green-700 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-md px-2 py-1">
             View Community
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {communityPosts.map((post) => (
-            <div key={post.id} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <div key={post.id} className="p-4 rounded-lg border bg-white/50 hover-lift">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                  <Users className="h-4 w-4 text-teal-600" />
+                <div className="w-8 h-8 bg-green-50 border border-green-100 rounded-full flex items-center justify-center">
+                  <Users className="h-4 w-4 text-green-600" />
                 </div>
-                <div>
-                  <p className="font-medium text-sm">{post.user}</p>
+                <div className="min-w-0">
+                  <p className="font-medium text-sm text-gray-900 truncate">{post.user}</p>
                   <p className="text-xs text-gray-500">{post.time}</p>
                 </div>
               </div>
-              <p className="text-sm text-gray-700 mb-3">{post.content}</p>
+              <p className="text-sm text-gray-600 mb-3 line-clamp-3">{post.content}</p>
               <div className="flex items-center gap-4">
-                <button className="flex items-center gap-1 text-gray-500 hover:text-red-500 transition-colors">
-                  <Heart className="h-3 w-3" />
-                  <span className="text-xs">{post.likes}</span>
+                <button className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-xs">
+                  <Heart className="h-3 w-3" /> {post.likes}
                 </button>
-                <button className="flex items-center gap-1 text-gray-500 hover:text-blue-500 transition-colors">
-                  <MessageCircle className="h-3 w-3" />
-                  <span className="text-xs">{post.comments}</span>
+                <button className="flex items-center gap-1 text-gray-400 hover:text-green-600 transition-colors text-xs">
+                  <MessageCircle className="h-3 w-3" /> {post.comments}
                 </button>
-                <button className="flex items-center gap-1 text-gray-500 hover:text-green-500 transition-colors">
-                  <Share2 className="h-3 w-3" />
-                  <span className="text-xs">Share</span>
+                <button className="flex items-center gap-1 text-gray-400 hover:text-green-700 transition-colors text-xs">
+                  <Share2 className="h-3 w-3" /> Share
                 </button>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* Quick Action Buttons */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <button className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-200 flex items-center justify-center gap-2">
-          <Camera className="h-5 w-5" />
-          Report Waste
-        </button>
-        <button className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-xl font-medium hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center justify-center gap-2">
-          <MapPin className="h-5 w-5" />
-          View Map
-        </button>
-        <button className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 rounded-xl font-medium hover:from-purple-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center gap-2">
-          <Gift className="h-5 w-5" />
-          Rewards
-        </button>
-        <button className="bg-gradient-to-r from-teal-500 to-teal-600 text-white p-4 rounded-xl font-medium hover:from-teal-600 hover:to-teal-700 transition-all duration-200 flex items-center justify-center gap-2">
-          <Users className="h-5 w-5" />
-          Community
-        </button>
+        {[
+          { label: 'Report Waste', icon: Camera },
+          { label: 'View Map', icon: MapPin },
+          { label: 'Rewards', icon: Gift },
+          { label: 'Community', icon: Users }
+        ].map((action) => (
+          <button
+            key={action.label}
+            className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white py-3 px-4 flex items-center justify-center gap-2 text-sm font-medium hover-lift focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+          >
+            <span className="absolute inset-0 bg-gradient-to-br from-green-50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <action.icon className="h-5 w-5 text-green-600" />
+            <span className="text-gray-700 group-hover:text-gray-900">{action.label}</span>
+          </button>
+        ))}
       </div>
     </div>
   );

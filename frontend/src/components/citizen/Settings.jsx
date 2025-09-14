@@ -31,6 +31,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { userService } from '../../lib/localDatabase';
 import ProfilePicture from '../ui/ProfilePicture';
+import ToggleSwitch from '../ui/ToggleSwitch';
 
 const Settings = () => {
   const { user, updateUser } = useAuth();
@@ -329,7 +330,6 @@ const Settings = () => {
           setSaveMessage('Please fix the errors below');
           return;
         }
-        
         const profileUpdates = {
           full_name: profile.full_name.trim(),
           email: profile.email.trim(),
@@ -338,23 +338,6 @@ const Settings = () => {
           bio: profile.bio.trim(),
           profile_image: profile.profile_image
         };
-
-      } else if (section === 'profile') {
-        if (!validateProfile()) {
-          setSaving(false);
-          setSaveMessage('Please fix the errors below');
-          return;
-        }
-        
-        const profileUpdates = {
-          full_name: profile.full_name.trim(),
-          email: profile.email.trim(),
-          phone: profile.phone.trim(),
-          address: profile.address.trim(),
-          bio: profile.bio.trim(),
-          profile_image: profile.profile_image
-        };
-
         console.log('Updating profile with:', profileUpdates);
         const updatedUser = await userService.updateProfile(user.id, profileUpdates);
         console.log('Profile updated:', updatedUser);
@@ -491,9 +474,9 @@ const Settings = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" role="banner">
         <div className="flex items-center gap-3">
-          <SettingsIcon className="h-6 w-6 text-green-500" />
+          <SettingsIcon className="h-6 w-6 text-green-500" aria-hidden="true" />
           <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         </div>
         <div className="flex items-center gap-3">
@@ -507,40 +490,44 @@ const Settings = () => {
             disabled={loading}
             className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
             title="Refresh settings"
+            aria-label="Refresh settings"
           >
-            <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
           <button
             onClick={() => handleSave('all')}
             disabled={saving}
             className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
+            aria-label="Save all settings"
           >
-            {saving ? <Loader className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? <Loader className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
             Save All
           </button>
         </div>
       </div>
 
       {/* Save Message */}
-      {saveMessage && (
-        <div className={`p-3 rounded-lg flex items-center gap-2 ${
-          saveMessage.includes('Error') 
-            ? 'bg-red-50 text-red-700 border border-red-200'
-            : 'bg-green-50 text-green-700 border border-green-200'
-        }`}>
-          {saveMessage.includes('Error') ? (
-            <AlertCircle className="h-4 w-4" />
-          ) : (
-            <Check className="h-4 w-4" />
-          )}
-          {saveMessage}
-        </div>
-      )}
+      <div aria-live="polite" role="status">
+        {saveMessage && (
+          <div className={`p-3 rounded-lg flex items-center gap-2 ${
+            saveMessage.includes('Error') 
+              ? 'bg-red-50 text-red-700 border border-red-200'
+              : 'bg-green-50 text-green-700 border border-green-200'
+          }`}>
+            {saveMessage.includes('Error') ? (
+              <AlertCircle className="h-4 w-4" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+            {saveMessage}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sidebar */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl p-4 shadow-sm border">
+          <div className="card-surface p-4">
             <nav className="space-y-2">
               {tabs.map((tab) => (
                 <button
@@ -562,7 +549,7 @@ const Settings = () => {
 
         {/* Content */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
+          <div className="card-surface p-6">
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div className="space-y-6">
@@ -711,52 +698,49 @@ const Settings = () => {
                 <h2 className="text-xl font-semibold">Notification Preferences</h2>
                 
                 <div className="space-y-4">
-                  {Object.entries(preferences.notifications).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1">
-                          {key === 'email_reports' && <Mail className="h-5 w-5 text-blue-500" />}
-                          {key === 'push_updates' && <Bell className="h-5 w-5 text-green-500" />}
-                          {key === 'task_notifications' && <Activity className="h-5 w-5 text-orange-500" />}
-                          {key === 'weekly_summary' && <Calendar className="h-5 w-5 text-purple-500" />}
-                          {key === 'promotional' && <Gift className="h-5 w-5 text-pink-500" />}
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900 capitalize">
-                            {key.replace('_', ' ')}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {key === 'email_reports' && 'Get notified via email when you submit new reports or when they are updated'}
-                            {key === 'push_updates' && 'Receive push notifications for important app updates and announcements'}
-                            {key === 'task_notifications' && 'Get notified when collection services are assigned to clean your reported areas'}
-                            {key === 'weekly_summary' && 'Receive a weekly summary of your environmental impact and achievements'}
-                            {key === 'promotional' && 'Get promotional emails about new features, rewards, and community events'}
-                          </p>
-                          {value && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                              <span className="text-xs text-green-600">Active</span>
-                            </div>
-                          )}
+                  {Object.entries(preferences.notifications).map(([key, value]) => {
+                    const label = key.replace('_', ' ');
+                    const description =
+                      key === 'email_reports' ? 'Get notified via email when you submit new reports or when they are updated' :
+                      key === 'push_updates' ? 'Receive push notifications for important app updates and announcements' :
+                      key === 'task_notifications' ? 'Get notified when collection services are assigned to clean your reported areas' :
+                      key === 'weekly_summary' ? 'Receive a weekly summary of your environmental impact and achievements' :
+                      key === 'promotional' ? 'Get promotional emails about new features, rewards, and community events' : '';
+                    return (
+                      <div key={key} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1">
+                            {key === 'email_reports' && <Mail className="h-5 w-5 text-blue-500" />}
+                            {key === 'push_updates' && <Bell className="h-5 w-5 text-green-500" />}
+                            {key === 'task_notifications' && <Activity className="h-5 w-5 text-orange-500" />}
+                            {key === 'weekly_summary' && <Calendar className="h-5 w-5 text-purple-500" />}
+                            {key === 'promotional' && <Gift className="h-5 w-5 text-pink-500" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <ToggleSwitch
+                              checked={value}
+                              onChange={(next) => setPreferences(prev => ({
+                                ...prev,
+                                notifications: {
+                                  ...prev.notifications,
+                                  [key]: next
+                                }
+                              }))}
+                              label={label}
+                              description={description}
+                              className="w-full"
+                            />
+                            {value && (
+                              <div className="flex items-center gap-1 mt-1 pl-[52px]">
+                                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                <span className="text-xs text-green-600">Active</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={value}
-                          onChange={(e) => setPreferences(prev => ({
-                            ...prev,
-                            notifications: {
-                              ...prev.notifications,
-                              [key]: e.target.checked
-                            }
-                          }))}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                      </label>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -822,35 +806,29 @@ const Settings = () => {
                     </div>
                   </div>
 
-                  {Object.entries(preferences.privacy).filter(([key]) => key !== 'profile_visibility').map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <h3 className="font-medium text-gray-900 capitalize">
-                          {key.replace('_', ' ')}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {key === 'location_sharing' && 'Allow sharing your location for better task matching'}
-                          {key === 'activity_visibility' && 'Show your activity in public feeds'}
-                          {key === 'leaderboard_participation' && 'Participate in public leaderboards'}
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
+                  {Object.entries(preferences.privacy).filter(([key]) => key !== 'profile_visibility').map(([key, value]) => {
+                    const description =
+                      key === 'location_sharing' ? 'Allow sharing your location for better task matching' :
+                      key === 'activity_visibility' ? 'Show your activity in public feeds' :
+                      key === 'leaderboard_participation' ? 'Participate in public leaderboards' : '';
+                    return (
+                      <div key={key} className="p-4 bg-gray-50 rounded-lg">
+                        <ToggleSwitch
                           checked={value}
-                          onChange={(e) => setPreferences(prev => ({
+                          onChange={(next) => setPreferences(prev => ({
                             ...prev,
                             privacy: {
                               ...prev.privacy,
-                              [key]: e.target.checked
+                              [key]: next
                             }
                           }))}
-                          className="sr-only peer"
+                          label={key.replace('_', ' ')}
+                          description={description}
+                          className="w-full"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                      </label>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <button
@@ -889,26 +867,20 @@ const Settings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">Auto-detect Location</h3>
-                      <p className="text-sm text-gray-500">Automatically detect your location for reports</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={preferences.location.auto_location}
-                        onChange={(e) => setPreferences(prev => ({
-                          ...prev,
-                          location: {
-                            ...prev.location,
-                            auto_location: e.target.checked
-                          }
-                        }))}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                    </label>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <ToggleSwitch
+                      checked={preferences.location.auto_location}
+                      onChange={(next) => setPreferences(prev => ({
+                        ...prev,
+                        location: {
+                          ...prev.location,
+                          auto_location: next
+                        }
+                      }))}
+                      label="Auto-detect Location"
+                      description="Automatically detect your location for reports"
+                      className="w-full"
+                    />
                   </div>
                 </div>
 
@@ -1131,26 +1103,22 @@ const Settings = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900 flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-blue-500" />
-                        Two-Factor Authentication
-                      </h3>
-                      <p className="text-sm text-gray-500">Add an extra layer of security to your account</p>
-                      {security.two_factor_enabled && (
-                        <p className="text-sm text-green-600 mt-1">✓ 2FA is currently enabled</p>
-                      )}
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1"><Shield className="h-5 w-5 text-blue-500" /></div>
+                      <div className="flex-1 min-w-0">
+                        <ToggleSwitch
+                          checked={security.two_factor_enabled}
+                          onChange={(next) => setSecurity(prev => ({ ...prev, two_factor_enabled: next }))}
+                          label="Two-Factor Authentication"
+                          description="Add an extra layer of security to your account"
+                          className="w-full"
+                        />
+                        {security.two_factor_enabled && (
+                          <p className="text-sm text-green-600 mt-1 pl-[52px]">✓ 2FA is currently enabled</p>
+                        )}
+                      </div>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={security.two_factor_enabled}
-                        onChange={(e) => setSecurity(prev => ({ ...prev, two_factor_enabled: e.target.checked }))}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                    </label>
                   </div>
 
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
