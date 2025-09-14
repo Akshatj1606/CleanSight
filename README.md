@@ -426,6 +426,104 @@ VITE_SUPABASE_ANON_KEY=your_production_anon_key
 VITE_API_BASE_URL=your_backend_url
 ```
 
+### 🔁 SPA Routing (React Router + Vercel)
+
+Because the frontend is a Single Page Application (SPA), all non-asset deep links (e.g. `/dashboard`, `/admin/overview`) must serve `index.html` so React Router can resolve the route client‑side.
+
+Create (already added) a `vercel.json` at the repository root:
+
+```json
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}
+```
+
+If your Python backend is deployed separately (Railway / Render), you can keep the `/api/(.*)` passthrough (it’s harmless) or remove it. Point `VITE_API_BASE_URL` to the backend’s public URL.
+
+#### Route Inventory
+Public:
+`/`, `/impact`, `/help`, `/login`, `/register`
+
+Citizen (protected):
+`/dashboard`, `/report`, `/report/new`, `/map`, `/leaderboard`, `/rewards`, `/community`, `/settings`
+
+Ragpicker (protected):
+`/r/tasks`, `/r/map`, `/r/earnings`, `/r/profile`
+
+Institution (protected):
+`/org/dashboard`, `/org/reports`, `/org/members`, `/org/analytics`, `/org/settings`
+
+Admin (protected):
+`/admin/overview`, `/admin/moderation`, `/admin/assign`, `/admin/heatmap`, `/admin/users`, `/admin/partners`, `/admin/settings`
+
+Wildcard:
+`*` → NotFound component
+
+### 🔐 Firebase Integration (Current Auth Layer)
+The project now supports Firebase Auth + Firestore user profiles. Ensure the following environment variables are added in Vercel (ALL prefixed with `VITE_`):
+
+```
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+```
+
+Firestore security rules (see `firebase.rules`) restrict user document access to the authenticated owner. Deploy them via Firebase CLI:
+```
+firebase deploy --only firestore:rules
+```
+
+### 📦 Build Settings (Vercel)
+Recommended if using monorepo:
+- Root Directory: `frontend`
+- Build Command: `npm run build`
+- Install Command: `npm install`
+- Output Directory: `dist`
+
+If keeping root as project root, add a top-level build script or set `Build Command` to `cd frontend && npm install && npm run build` and `Output Directory` to `frontend/dist`.
+
+### 🗂️ Asset Caching
+`vercel.json` sets immutable caching for fingerprinted assets under `/assets/*` (Vite already includes content hashes). Avoid applying the same policy to HTML.
+
+### 🧪 Deployment Smoke Test Checklist
+After each deployment:
+1. Direct load `/dashboard` (should show login or dashboard, not 404).
+2. Refresh on a protected nested route (e.g. `/admin/overview`).
+3. Sign in, verify role redirect works.
+4. Open DevTools → Network: confirm `index.html` served once, JS chunks cached (200 / 304).
+5. Try an unknown path `/this-should-404` → NotFound component.
+
+### ⚠️ Troubleshooting
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| 404 on deep link | Missing / wrong rewrite | Confirm `vercel.json` deployed at root |
+| Env vars undefined | Wrong root directory | Set Vercel root to `frontend` or adjust build command |
+| Firebase auth errors | Mis-typed project config | Re-copy config from Firebase console |
+| Stale assets after deploy | Browser cache | Invalidate with new build (hashes handle this) |
+
+### ➕ Next Enhancements (Optional)
+- Add password reset & social providers (Google) via Firebase Auth.
+- Code split admin/institution bundles with `React.lazy`.
+- Replace legacy localStorage fallback once migration stable.
+- Add analytics (e.g. Log Rocket / PostHog) guarded by consent.
+
+---
+
 #### **Backend (Railway/Heroku)**
 ```bash
 # Create requirements.txt with pinned versions
