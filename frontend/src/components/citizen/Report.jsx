@@ -110,8 +110,8 @@ const Report = () => {
       
       console.log('🤖 Sending image to YOLO API...', file.name);
       
-      // Use environment variable for API URL, fallback to localhost for development
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      // Use environment variable for API URL, default to Hugging Face Space backend
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://hrsh2501-cleansight.hf.space';
       
       const response = await fetch(`${apiUrl}/predict`, {
         method: 'POST',

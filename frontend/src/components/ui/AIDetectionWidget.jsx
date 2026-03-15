@@ -3,9 +3,9 @@
 /**
  * AI Detection Widget
  * Minimal client for the backend /predict endpoint.
- * Assumes backend running at http://localhost:5000 (configurable via VITE_API_URL).
+ * Defaults to the Hugging Face Space backend (override via VITE_API_URL).
  */
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://hrsh2501-cleansight.hf.space';
 
 export default function AIDetectionWidget() {
   const [file, setFile] = useState(null);

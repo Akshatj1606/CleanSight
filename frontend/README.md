@@ -63,12 +63,17 @@ npm install
 4. Set up the storage buckets (report-images, profile-images, cleanup-images) in Storage section
 
 ### 4. Environment Configuration
-Update the `.env` file with your Supabase credentials:
+Create/update a local env file (recommended: `.env.local`) with your Supabase credentials:
 ```env
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 VITE_DEV_MODE=false
+
+# Optional (CleanSight AI ChatBot / RAG)
+VITE_GEMINI_API_KEY=your-gemini-api-key-here
 ```
+
+Keep API keys in `.env.local` (gitignored) and never commit them.
 
 ### 5. Run the Development Server
 ```bash

@@ -38,7 +38,7 @@ const MobileMenuPanel = ({ links }) => {
           transition={{duration:0.25}}
           className="md:hidden px-4 pb-6"
         >
-          <div className="rounded-2xl border border-gray-200 bg-white/90 backdrop-blur shadow-lg p-4 space-y-1">
+          <div className="rounded-2xl border border-gray-200 #FFF4DB backdrop-blur shadow-lg p-4 space-y-1">
             {links.map(l=> (
               <a key={l.id} href={l.href || `#${l.id}`} onClick={()=> mobileMenuState.set(false)} className="block px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500/50">
                 {l.label}

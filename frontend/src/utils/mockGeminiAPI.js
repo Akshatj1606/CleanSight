@@ -21,7 +21,8 @@ const callRealGeminiAPI = async (contents) => {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+      // 
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`,
       { contents },
       { headers: { "Content-Type": "application/json" } }
     );
@@ -78,7 +79,7 @@ export const mockApiCall = {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       
       // Try to use real API if key is configured
-      if (apiKey && apiKey !== 'your_gemini_api_key_here') {
+      if (apiKey ) {
         try {
           const reply = await callRealGeminiAPI(data.contents);
           return { data: { reply } };
